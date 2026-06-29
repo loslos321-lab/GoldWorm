@@ -2,6 +2,9 @@
 /target
 *.pdb
 
+# Rust lockfile (pin dependency versions)
+Cargo.lock
+
 # Model weights & embeddings (generated, large)
 *.safetensors
 *.bin

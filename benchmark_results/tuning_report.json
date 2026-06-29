@@ -1,0 +1,175 @@
+{
+  "sweep": {
+    "best": {
+      "lr": 0.05,
+      "stab": 0.995
+    },
+    "goldilocks": {
+      "lr_min": 0.001,
+      "lr_max": 0.1,
+      "stab": 0.995
+    },
+    "runs": [
+      {
+        "lr": 0.001,
+        "stab": 0.99,
+        "nan": false,
+        "mean_delta": 0.7496172524315305,
+        "final_mean": 0.9999998927301548,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.001,
+        "stab": 0.995,
+        "nan": false,
+        "mean_delta": 0.7506136293383701,
+        "final_mean": 0.9999998754936436,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.001,
+        "stab": 0.999,
+        "nan": false,
+        "mean_delta": 0.7495291046027268,
+        "final_mean": 0.9999998767882188,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.001,
+        "stab": 0.9995,
+        "nan": false,
+        "mean_delta": 0.7494665733412069,
+        "final_mean": 0.9999998881240496,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.005,
+        "stab": 0.99,
+        "nan": false,
+        "mean_delta": 0.7498959721889176,
+        "final_mean": 0.9999994458491341,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.005,
+        "stab": 0.995,
+        "nan": false,
+        "mean_delta": 0.7495276046871425,
+        "final_mean": 0.9999994392009466,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.005,
+        "stab": 0.999,
+        "nan": false,
+        "mean_delta": 0.7502088839684203,
+        "final_mean": 0.9999994140661463,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.005,
+        "stab": 0.9995,
+        "nan": false,
+        "mean_delta": 0.7502236571889339,
+        "final_mean": 0.9999994407346199,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.01,
+        "stab": 0.99,
+        "nan": false,
+        "mean_delta": 0.7497510471929004,
+        "final_mean": 0.9999988734154299,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.01,
+        "stab": 0.995,
+        "nan": false,
+        "mean_delta": 0.7496010968191662,
+        "final_mean": 0.9999988242001867,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.01,
+        "stab": 0.999,
+        "nan": false,
+        "mean_delta": 0.7499018965148896,
+        "final_mean": 0.99999887044878,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.01,
+        "stab": 0.9995,
+        "nan": false,
+        "mean_delta": 0.7503828242585466,
+        "final_mean": 0.9999988331592625,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.05,
+        "stab": 0.99,
+        "nan": false,
+        "mean_delta": 0.7502408888475272,
+        "final_mean": 0.9999946382504854,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.05,
+        "stab": 0.995,
+        "nan": false,
+        "mean_delta": 0.7506242777766168,
+        "final_mean": 0.9999940247607013,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.05,
+        "stab": 0.999,
+        "nan": false,
+        "mean_delta": 0.7498177253452125,
+        "final_mean": 0.9999941325061357,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.05,
+        "stab": 0.9995,
+        "nan": false,
+        "mean_delta": 0.750014314713069,
+        "final_mean": 0.9999942450634512,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.1,
+        "stab": 0.99,
+        "nan": false,
+        "mean_delta": 0.7497458831570123,
+        "final_mean": 0.999988477032774,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.1,
+        "stab": 0.995,
+        "nan": false,
+        "mean_delta": 0.7495883380071398,
+        "final_mean": 0.999988718415021,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.1,
+        "stab": 0.999,
+        "nan": false,
+        "mean_delta": 0.7495590857194727,
+        "final_mean": 0.9999883873975901,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      },
+      {
+        "lr": 0.1,
+        "stab": 0.9995,
+        "nan": false,
+        "mean_delta": 0.7503286525124457,
+        "final_mean": 0.999988468098493,
+        "note": "AGGRESSIV \u2014 grenzwertig"
+      }
+    ]
+  }
+}

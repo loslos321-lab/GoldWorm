@@ -1,0 +1,218 @@
+{
+  "checkpoint": "trained_worm_v1.safetensors",
+  "analysis_date": "2026-06-28T17:36:45Z",
+  "synaptic_weights": {
+    "shape": [
+      302,
+      302
+    ],
+    "count": 91204,
+    "min": 0.0,
+    "max": 1.0,
+    "mean": 0.03045961,
+    "median": 0.0,
+    "std": 0.1513139,
+    "variance": 0.02289589593,
+    "pct_zero_abs": 95.73,
+    "pct_lt_1e_6": 95.73,
+    "pct_lt_1e_4": 95.73,
+    "histogram": [
+      {
+        "range": "[0e+00, 1e-08)",
+        "count": 87314
+      },
+      {
+        "range": "[1e-08, 1e-07)",
+        "count": 0
+      },
+      {
+        "range": "[1e-07, 1e-06)",
+        "count": 0
+      },
+      {
+        "range": "[1e-06, 1e-05)",
+        "count": 0
+      },
+      {
+        "range": "[1e-05, 1e-04)",
+        "count": 0
+      },
+      {
+        "range": "[1e-04, 1e-03)",
+        "count": 0
+      },
+      {
+        "range": "[1e-03, 1e-02)",
+        "count": 0
+      },
+      {
+        "range": "[1e-02, 1e-01)",
+        "count": 1
+      },
+      {
+        "range": "[1e-01, 5e-01)",
+        "count": 787
+      },
+      {
+        "range": "[5e-01, 1e+00)",
+        "count": 2800
+      }
+    ],
+    "pct_gt_0_001": 4.27,
+    "pct_gt_0_01": 4.27,
+    "pct_gt_0_1": 4.26,
+    "pct_gt_0_5": 3.4,
+    "verdict": "GEMISCHT"
+  },
+  "diagonal": {
+    "shape": [
+      302
+    ],
+    "count": 302,
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0,
+    "median": 0.0,
+    "std": 0.0,
+    "variance": 0.0,
+    "pct_zero_abs": 100.0,
+    "pct_lt_1e_6": 100.0,
+    "pct_lt_1e_4": 100.0,
+    "histogram": [
+      {
+        "range": "[0e+00, 1e-08)",
+        "count": 302
+      },
+      {
+        "range": "[1e-08, 1e-07)",
+        "count": 0
+      },
+      {
+        "range": "[1e-07, 1e-06)",
+        "count": 0
+      },
+      {
+        "range": "[1e-06, 1e-05)",
+        "count": 0
+      },
+      {
+        "range": "[1e-05, 1e-04)",
+        "count": 0
+      },
+      {
+        "range": "[1e-04, 1e-03)",
+        "count": 0
+      },
+      {
+        "range": "[1e-03, 1e-02)",
+        "count": 0
+      },
+      {
+        "range": "[1e-02, 1e-01)",
+        "count": 0
+      },
+      {
+        "range": "[1e-01, 5e-01)",
+        "count": 0
+      },
+      {
+        "range": "[5e-01, 1e+00)",
+        "count": 0
+      }
+    ],
+    "pct_gt_0_001": 0.0,
+    "pct_gt_0_01": 0.0,
+    "pct_gt_0_1": 0.0,
+    "pct_gt_0_5": 0.0,
+    "verdict": "KOLLAPS"
+  },
+  "input_projection": {
+    "shape": [
+      302,
+      16
+    ],
+    "count": 4832,
+    "min": 0.00221947,
+    "max": 0.00444624,
+    "mean": 0.00331126,
+    "median": 0.0033014,
+    "std": 0.000645,
+    "variance": 4.16026e-07,
+    "pct_zero_abs": 0.0,
+    "pct_lt_1e_6": 0.0,
+    "pct_lt_1e_4": 0.0,
+    "histogram": [
+      {
+        "range": "[0e+00, 1e-08)",
+        "count": 0
+      },
+      {
+        "range": "[1e-08, 1e-07)",
+        "count": 0
+      },
+      {
+        "range": "[1e-07, 1e-06)",
+        "count": 0
+      },
+      {
+        "range": "[1e-06, 1e-05)",
+        "count": 0
+      },
+      {
+        "range": "[1e-05, 1e-04)",
+        "count": 0
+      },
+      {
+        "range": "[1e-04, 1e-03)",
+        "count": 0
+      },
+      {
+        "range": "[1e-03, 1e-02)",
+        "count": 4832
+      },
+      {
+        "range": "[1e-02, 1e-01)",
+        "count": 0
+      },
+      {
+        "range": "[1e-01, 5e-01)",
+        "count": 0
+      },
+      {
+        "range": "[5e-01, 1e+00)",
+        "count": 0
+      }
+    ],
+    "pct_gt_0_001": 100.0,
+    "pct_gt_0_01": 0.0,
+    "pct_gt_0_1": 0.0,
+    "pct_gt_0_5": 0.0,
+    "verdict": "GEMISCHT"
+  },
+  "delta_vs_old": {
+    "old_checkpoint": "trained_worm_v1_old_ngram.safetensors",
+    "synaptic_weights": {
+      "label": "synaptic_weights",
+      "mean_delta": -0.0121588864,
+      "mean_abs_delta": 0.0121591767,
+      "max_abs_delta": 0.89233201,
+      "pct_unchanged": 95.85,
+      "convergence_direction": "TOWARD_ZERO"
+    },
+    "input_projection": {
+      "label": "input_projection",
+      "mean_delta": -0.3467942274,
+      "mean_abs_delta": 0.3493429505,
+      "max_abs_delta": 0.9976162841,
+      "pct_unchanged": 0.0,
+      "convergence_direction": "TOWARD_ZERO"
+    }
+  },
+  "decision": {
+    "projection_verdict": "GEMISCHT",
+    "synaptic_verdict": "NORMAL",
+    "diagonal_verdict": "SCHWACH",
+    "root_cause": "UNKNOWN",
+    "action": "Manuelle Analyse n\u00f6tig"
+  }
+}

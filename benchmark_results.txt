@@ -1,0 +1,42 @@
+Benchmark Results: trained_worm_v1.safetensors
+Temperature: 0.05
+Date: 2026-06-28T17:24:07.479806+00:00
+
+Golden Queries:
+  Score: 1/10
+
+  [PASS] hello                                    → "antithesis apatosaurus anoia amblyopia amygdalin agonistic belemnite antiqua antlions apperception a"  (needs: hi/hello/hey/greetings, got: hi)
+  [FAIL] the opposite of black is                 → "apperception acidifying aiguilles aporia anthurium antiqua aniconism anoia antlions anhydrite antian"  (needs: white/light, got: none)
+  [FAIL] how does water taste?                    → "aperiodic anoles apperception anima belemnite aiguilles antiroll anoia antlions antisemitism animism"  (needs: wet/nothing/fresh, got: none)
+  [FAIL] what color is the sky?                   → "apatosaurus antiqua anthurium agonistic airburst belemnite aiguilles acidifying apperception alginat"  (needs: blue, got: none)
+  [FAIL] what does a cat say?                     → "anthurium anoia aporia admixtures antlions antianxiety alkoxy acidifying animism apperception aiguil"  (needs: meow/miaow, got: none)
+  [FAIL] fire is hot, ice is                      → "aphid aggadic airburst belemnite albe aiguilles antiroll antiqua acousmatic antianxiety anima acidif"  (needs: cold/cool, got: none)
+  [FAIL] good morning, how are                    → "antiqua aiguilles acidifying anemias acousmatic aggadic albe anthurium apotropaic airburst anoia ant"  (needs: fine/good/well/how, got: none)
+  [FAIL] the capital of france is                 → "agricole alginate anthurium alkoxy albe belemnite aniconism anhydrite anima antiroll aquarelle admix"  (needs: paris, got: none)
+  [FAIL] two plus two equals                      → "annie aquarelle airburst apeiron aggadic anemias antinomy antiqua albe aquanaut admixtures anthurium"  (needs: four, got: none)
+  [FAIL] thank you very much                      → "andes antinomy antiroll anemias apotropaic belemnite albe acousmatic apeiron aggadic alginate apperc"  (needs: welcome/pleasure/thanks, got: none)
+
+Failed Queries:
+  - the opposite of black is: "apperception acidifying aiguilles aporia anthurium antiqua aniconism anoia antlions anhydrite antian"
+  - how does water taste?: "aperiodic anoles apperception anima belemnite aiguilles antiroll anoia antlions antisemitism animism"
+  - what color is the sky?: "apatosaurus antiqua anthurium agonistic airburst belemnite aiguilles acidifying apperception alginat"
+  - what does a cat say?: "anthurium anoia aporia admixtures antlions antianxiety alkoxy acidifying animism apperception aiguil"
+  - fire is hot, ice is: "aphid aggadic airburst belemnite albe aiguilles antiroll antiqua acousmatic antianxiety anima acidif"
+  - good morning, how are: "antiqua aiguilles acidifying anemias acousmatic aggadic albe anthurium apotropaic airburst anoia ant"
+  - the capital of france is: "agricole alginate anthurium alkoxy albe belemnite aniconism anhydrite anima antiroll aquarelle admix"
+  - two plus two equals: "annie aquarelle airburst apeiron aggadic anemias antinomy antiqua albe aquanaut admixtures anthurium"
+  - thank you very much: "andes antinomy antiroll anemias apotropaic belemnite albe acousmatic apeiron aggadic alginate apperc"
+
+Boltzmann Audit:
+  Entropy: 2.9956
+  Entropy Ratio: 1.0
+  Mean dist (contrastive alignment): 0.9750
+
+================================================
+     ZERO-TRUST BENCHMARK ERGEBNIS
+================================================
+
+  Score: 1/10 < 8/10
+  → WORD SALAD DETEKTIERT. Projektions-Matrix fehlkalibriert.
+  → Phase 3 (Bias-Injektion in gpu.rs + training.rs) erforderlich.
+

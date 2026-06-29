@@ -1,0 +1,25 @@
+[package]
+name = "goldworm"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["GoldWorm Contributors"]
+description = "A zero-trust, 302-neuron cognitive engine using Dual-Stream Hebbian resonance. OOM-safe, fully transparent associative AI."
+license = "MIT"
+resolver = "2"
+
+[features]
+default = []
+cuda = ["candle-core/cuda"]
+
+[dependencies]
+ndarray = "0.15"
+thiserror = "1.0"
+safetensors = "0.4"
+memmap2 = "0.9"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+fastrand = "2"
+rustyline = "15"
+rustyline-derive = "0.12"
+candle-core = { version = "0.11.0", optional = true, default-features = false }

@@ -1,0 +1,63 @@
+{
+  "shape": [
+    302,
+    16
+  ],
+  "count": 4832,
+  "min": 0.00221947,
+  "max": 0.00444624,
+  "mean": 0.00331126,
+  "median": 0.0033014,
+  "std": 0.000645,
+  "variance": 4.16026e-07,
+  "pct_zero_abs": 0.0,
+  "pct_lt_1e_6": 0.0,
+  "pct_lt_1e_4": 0.0,
+  "histogram": [
+    {
+      "range": "[0e+00, 1e-08)",
+      "count": 0
+    },
+    {
+      "range": "[1e-08, 1e-07)",
+      "count": 0
+    },
+    {
+      "range": "[1e-07, 1e-06)",
+      "count": 0
+    },
+    {
+      "range": "[1e-06, 1e-05)",
+      "count": 0
+    },
+    {
+      "range": "[1e-05, 1e-04)",
+      "count": 0
+    },
+    {
+      "range": "[1e-04, 1e-03)",
+      "count": 0
+    },
+    {
+      "range": "[1e-03, 1e-02)",
+      "count": 4832
+    },
+    {
+      "range": "[1e-02, 1e-01)",
+      "count": 0
+    },
+    {
+      "range": "[1e-01, 5e-01)",
+      "count": 0
+    },
+    {
+      "range": "[5e-01, 1e+00)",
+      "count": 0
+    }
+  ],
+  "pct_gt_0_001": 100.0,
+  "pct_gt_0_01": 0.0,
+  "pct_gt_0_1": 0.0,
+  "pct_gt_0_5": 0.0,
+  "verdict": "GEMISCHT"
+}

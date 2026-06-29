@@ -1,0 +1,45 @@
+# Build artifacts
+/target
+*.pdb
+
+# Model weights & embeddings (generated, large)
+*.safetensors
+*.bin
+trained_worm_*.safetensors
+vocab_embeddings.bin
+vocab_coords.bin
+
+# Training data
+training_data/
+models/
+custom_corpus.txt
+static_vocabulary.txt
+
+# Scripts (uncomment if part of the project)
+# *.sh
+# *.py
+# webui.py
+# chat.sh
+# download_datasets.sh
+
+# Benchmark results (uncomment if you want to track)
+# benchmark_results/
+# benchmark_results.txt
+
+# Vault / secrets
+vault.json
+
+# Dev utilities
+scripts/
+src/bin/
+
+# IDE & editor
+.vscode/
+.idea/
+*.rs.bk
+.claude/
+.replit
+
+# OS
+.DS_Store
+Thumbs.db

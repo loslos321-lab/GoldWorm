@@ -1,0 +1,31 @@
+═══ Weight Histogram Analysis ═══
+Checkpoint: trained_worm_v1.safetensors (384,320 bytes)
+Date: 2026-06-28T17:36:45Z
+
+── synaptic_weights (302×302) ──
+  Mean:    0.03045961
+  Std:     0.1513139
+  Median:  0.0
+  Zero:    95.73%
+  Verdict: GEMISCHT
+  Diagonal: mean=0.0, zero=100.0% → SCHWACH
+
+── input_projection (302×16) ──
+  Mean:    0.00331126
+  Std:     0.000645
+  Median:  0.0033014
+  Zero:    0.0%
+  Verdict: GEMISCHT
+
+── Delta vs. old_ngram ──
+  synaptic: mean_abs_delta=0.0121591767, 95.85% unchanged
+  projection: mean_abs_delta=0.3493429505, 0.0% unchanged
+  → Training aktiv, kein Kollaps
+
+── Entscheidungsbaum ──
+  projection_verdict = GEMISCHT  (std=0.000645)
+  synaptic_verdict   = NORMAL   (mean=0.03045961)
+  diagonal_verdict   = SCHWACH   (diag_mean=0.0)
+
+  Root Cause: UNKNOWN
+  Action: Manuelle Analyse nötig

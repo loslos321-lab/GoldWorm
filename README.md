@@ -298,7 +298,8 @@ The brain separates **what you do** (sparse action) from **what you learn** (den
 "Neurons that fire together, wire together." Hebbian plasticity is the simplest, most biologically grounded learning rule. It requires no backpropagation, no gradient descent, no external optimizer. It is **local, online, and O(n)** — perfect for a zero-trust engine that must run on a single CPU core.
 
 ---
-
+In cooperation with https://github.com/Casey-allard/uor-r4 <3
+https://github.com/UOR-Foundation/UOR-Framework <3
 ## License
 
 MIT — See [LICENSE](LICENSE) for details.

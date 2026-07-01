@@ -44,13 +44,93 @@ GoldWorm is designed to run under strict local trust boundaries:
 Install these tools before running the project:
 
 - Rust toolchain with Cargo.
-- PowerShell on Windows.
 - Git for version control.
 - A local browser for opening the GUI.
+- PowerShell on Windows, or a POSIX shell such as Bash on Linux.
 
 The project does not require a public network listener for normal local GUI usage.
 
+## Linux Installation
+
+These commands assume a fresh Linux machine and a Bash-compatible terminal. GoldWorm still runs as a localhost-only service after installation.
+
+### Debian or Ubuntu
+
+```bash
+sudo apt update
+sudo apt install -y git curl build-essential pkg-config
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+. "$HOME/.cargo/env"
+git clone https://github.com/loslos321-lab/GoldWorm.git
+cd GoldWorm
+cargo build --bin goldworn
+cargo run goldworn
+```
+
+### Fedora
+
+```bash
+sudo dnf install -y git curl gcc gcc-c++ make pkgconf-pkg-config
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+. "$HOME/.cargo/env"
+git clone https://github.com/loslos321-lab/GoldWorm.git
+cd GoldWorm
+cargo build --bin goldworn
+cargo run goldworn
+```
+
+### Arch Linux
+
+```bash
+sudo pacman -Syu --needed git curl base-devel pkgconf
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+. "$HOME/.cargo/env"
+git clone https://github.com/loslos321-lab/GoldWorm.git
+cd GoldWorm
+cargo build --bin goldworn
+cargo run goldworn
+```
+
+### Existing Linux Checkout
+
+If the repository already exists locally, do not clone again. Use the existing directory:
+
+```bash
+cd /path/to/GoldWorm
+. "$HOME/.cargo/env"
+cargo build --bin goldworn
+cargo run goldworn
+```
+
+When the server is ready, open this URL in a local browser:
+
+```text
+http://127.0.0.1:9090/gui
+```
+
+## Windows Installation
+
+From PowerShell on an existing checkout:
+
+```powershell
+cd C:\Users\Student\GoldWorm
+cargo build --bin goldworn
+cargo run goldworn
+```
+
 ## Start The Project
+
+### Linux
+
+Open a terminal and run:
+
+```bash
+cd /path/to/GoldWorm
+. "$HOME/.cargo/env"
+cargo run goldworn
+```
+
+### Windows
 
 Open PowerShell and run:
 
@@ -143,31 +223,39 @@ Important project paths:
 
 ## Development Commands
 
-Build the local binary:
+Build the local binary on Linux:
+
+```bash
+cd /path/to/GoldWorm
+. "$HOME/.cargo/env"
+cargo build --bin goldworn
+```
+
+Run the local GUI server on Linux:
+
+```bash
+cd /path/to/GoldWorm
+. "$HOME/.cargo/env"
+cargo run goldworn
+```
+
+Build and run on Windows:
 
 ```powershell
 cd C:\Users\Student\GoldWorm
 cargo build --bin goldworn
-```
-
-Run the local GUI server:
-
-```powershell
-cd C:\Users\Student\GoldWorm
 cargo run goldworn
 ```
 
 Run tests:
 
-```powershell
-cd C:\Users\Student\GoldWorm
+```bash
 cargo test
 ```
 
 Check Git status:
 
-```powershell
-cd C:\Users\Student\GoldWorm
+```bash
 git status --short --branch
 ```
 
@@ -175,7 +263,19 @@ git status --short --branch
 
 ### Port 9090 is already in use
 
-Stop any existing GoldWorm server process, then start again:
+Stop any existing GoldWorm server process, then start again.
+
+Linux:
+
+```bash
+pkill -f goldworn || true
+pkill -f chat_server || true
+cd /path/to/GoldWorm
+. "$HOME/.cargo/env"
+cargo run goldworn
+```
+
+Windows PowerShell:
 
 ```powershell
 Stop-Process -Name goldworn,chat_server -Force
@@ -185,13 +285,31 @@ cargo run goldworn
 
 ### GUI reports simulation mode
 
-Check whether the backend is running:
+Check whether the backend is running.
+
+Linux:
+
+```bash
+curl -s http://127.0.0.1:9090/health
+```
+
+Windows PowerShell:
 
 ```powershell
 Invoke-WebRequest -Uri "http://127.0.0.1:9090/health" -UseBasicParsing
 ```
 
-If the backend is not running, start it:
+If the backend is not running, start it.
+
+Linux:
+
+```bash
+cd /path/to/GoldWorm
+. "$HOME/.cargo/env"
+cargo run goldworn
+```
+
+Windows PowerShell:
 
 ```powershell
 cd C:\Users\Student\GoldWorm

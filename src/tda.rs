@@ -164,7 +164,12 @@ pub fn compute_persistence_diagram(activations: &[Array1<f32>]) -> PersistenceDi
     let n = activations.len();
     if n < 2 {
         return PersistenceDiagram {
-            beta_0_pairs: (0..n).map(|_i| PersistencePair { birth: 0, death: 256 }).collect(),
+            beta_0_pairs: (0..n)
+                .map(|_i| PersistencePair {
+                    birth: 0,
+                    death: 256,
+                })
+                .collect(),
             beta_1_pairs: vec![],
             beta_2_pairs: vec![],
             n_points: n,
@@ -184,12 +189,18 @@ pub fn compute_persistence_diagram(activations: &[Array1<f32>]) -> PersistenceDi
             let d_q = (d * 16.0).round() as i32;
             dists[i * n + j] = d_q;
             dists[j * n + i] = d_q;
-            if d_q > max_dist { max_dist = d_q; }
+            if d_q > max_dist {
+                max_dist = d_q;
+            }
         }
     }
 
-    if max_dist > 256 { max_dist = 256; }
-    if max_dist < 1 { max_dist = 1; }
+    if max_dist > 256 {
+        max_dist = 256;
+    }
+    if max_dist < 1 {
+        max_dist = 1;
+    }
 
     let mut b0_parents: Vec<usize> = (0..n).collect();
     let mut b0_active: Vec<bool> = vec![true; n];
@@ -198,20 +209,26 @@ pub fn compute_persistence_diagram(activations: &[Array1<f32>]) -> PersistenceDi
     let mut prev_beta_1_val = 0usize;
 
     fn b0_find(p: &mut [usize], x: usize) -> usize {
-        if p[x] != x { p[x] = b0_find(p, p[x]); }
+        if p[x] != x {
+            p[x] = b0_find(p, p[x]);
+        }
         p[x]
     }
     fn b0_union(p: &mut [usize], a: usize, b: usize) {
         let ra = b0_find(p, a);
         let rb = b0_find(p, b);
-        if ra != rb { p[ra] = rb; }
+        if ra != rb {
+            p[ra] = rb;
+        }
     }
 
     for eps in 1..=max_dist {
         let mut edges = 0usize;
         for i in 0..n {
             for j in (i + 1)..n {
-                if dists[i * n + j] <= eps { edges += 1; }
+                if dists[i * n + j] <= eps {
+                    edges += 1;
+                }
             }
         }
 
@@ -230,7 +247,10 @@ pub fn compute_persistence_diagram(activations: &[Array1<f32>]) -> PersistenceDi
 
         if current_beta_1 > prev_beta_1_val {
             for _ in 0..(current_beta_1 - prev_beta_1_val) {
-                beta_1_pairs.push(PersistencePair { birth: eps, death: max_dist });
+                beta_1_pairs.push(PersistencePair {
+                    birth: eps,
+                    death: max_dist,
+                });
             }
         }
 
@@ -246,7 +266,10 @@ pub fn compute_persistence_diagram(activations: &[Array1<f32>]) -> PersistenceDi
                         b0_parents[kill] = keep;
                         if b0_active[kill] {
                             b0_active[kill] = false;
-                            beta_0_pairs.push(PersistencePair { birth: 0, death: eps });
+                            beta_0_pairs.push(PersistencePair {
+                                birth: 0,
+                                death: eps,
+                            });
                         }
                     }
                 }
@@ -256,7 +279,10 @@ pub fn compute_persistence_diagram(activations: &[Array1<f32>]) -> PersistenceDi
 
     for i in 0..n {
         if b0_active[i] {
-            beta_0_pairs.push(PersistencePair { birth: 0, death: max_dist });
+            beta_0_pairs.push(PersistencePair {
+                birth: 0,
+                death: max_dist,
+            });
         }
     }
 
@@ -319,12 +345,17 @@ pub fn compute_all_betti_numbers(activations: &[Array1<f32>]) -> (usize, usize, 
 
     let mut parent: Vec<usize> = (0..n).collect();
     fn find(p: &mut [usize], x: usize) -> usize {
-        if p[x] != x { p[x] = find(p, p[x]); }
+        if p[x] != x {
+            p[x] = find(p, p[x]);
+        }
         p[x]
     }
     fn union(p: &mut [usize], a: usize, b: usize) {
-        let ra = find(p, a); let rb = find(p, b);
-        if ra != rb { p[ra] = rb; }
+        let ra = find(p, a);
+        let rb = find(p, b);
+        if ra != rb {
+            p[ra] = rb;
+        }
     }
 
     let mut edges = 0usize;
@@ -402,18 +433,28 @@ fn bottleneck_distance_pairs(a: &[PersistencePair], b: &[PersistencePair]) -> (f
     }
 
     let extra_a = if sorted_a.len() > n_matched {
-        sorted_a[n_matched..].iter().map(|p| p.lifespan() as f64 * 0.5).fold(0.0_f64, f64::max)
+        sorted_a[n_matched..]
+            .iter()
+            .map(|p| p.lifespan() as f64 * 0.5)
+            .fold(0.0_f64, f64::max)
     } else {
         0.0
     };
     let extra_b = if sorted_b.len() > n_matched {
-        sorted_b[n_matched..].iter().map(|p| p.lifespan() as f64 * 0.5).fold(0.0_f64, f64::max)
+        sorted_b[n_matched..]
+            .iter()
+            .map(|p| p.lifespan() as f64 * 0.5)
+            .fold(0.0_f64, f64::max)
     } else {
         0.0
     };
 
     let bottleneck = max_l_inf.max(extra_a).max(extra_b);
-    let mean_matched = if n_matched > 0 { match_sum / n_matched as f64 } else { 0.0 };
+    let mean_matched = if n_matched > 0 {
+        match_sum / n_matched as f64
+    } else {
+        0.0
+    };
 
     (bottleneck, mean_matched)
 }
@@ -434,13 +475,16 @@ pub fn golden_anti_resonance(diagram: &PersistenceDiagram) -> f64 {
     let inv_phi = 1.0 / PHI;
     let inv_phi2 = inv_phi * inv_phi;
 
-    let total_penalty: f64 = all.iter().map(|p| {
-        let ratio = p.lifespan() as f64 / max_life;
-        let peak1 = (-100.0 * (ratio - inv_phi).powi(2)).exp();
-        let peak2 = (-100.0 * (ratio - inv_phi2).powi(2)).exp();
-        let peak3 = (-100.0 * (ratio - 1.0 + inv_phi).powi(2)).exp();
-        peak1 + peak2 + peak3
-    }).sum();
+    let total_penalty: f64 = all
+        .iter()
+        .map(|p| {
+            let ratio = p.lifespan() as f64 / max_life;
+            let peak1 = (-100.0 * (ratio - inv_phi).powi(2)).exp();
+            let peak2 = (-100.0 * (ratio - inv_phi2).powi(2)).exp();
+            let peak3 = (-100.0 * (ratio - 1.0 + inv_phi).powi(2)).exp();
+            peak1 + peak2 + peak3
+        })
+        .sum();
 
     (total_penalty / all.len() as f64).min(1.0)
 }
@@ -513,40 +557,64 @@ mod tests {
     fn test_bottleneck_distance_identical_diagrams() {
         let a = PersistenceDiagram {
             beta_0_pairs: vec![
-                PersistencePair { birth: 0, death: 100 },
-                PersistencePair { birth: 0, death: 50 },
+                PersistencePair {
+                    birth: 0,
+                    death: 100,
+                },
+                PersistencePair {
+                    birth: 0,
+                    death: 50,
+                },
             ],
-            beta_1_pairs: vec![PersistencePair { birth: 20, death: 80 }],
+            beta_1_pairs: vec![PersistencePair {
+                birth: 20,
+                death: 80,
+            }],
             beta_2_pairs: vec![],
             n_points: 5,
         };
         let b = a.clone();
         let (bottleneck, _) = bottleneck_distance(&a, &b);
-        assert!(bottleneck < 1e-10, "identical diagrams should have 0 bottleneck");
+        assert!(
+            bottleneck < 1e-10,
+            "identical diagrams should have 0 bottleneck"
+        );
     }
 
     #[test]
     fn test_bottleneck_distance_different_diagrams() {
         let a = PersistenceDiagram {
-            beta_0_pairs: vec![PersistencePair { birth: 0, death: 100 }],
+            beta_0_pairs: vec![PersistencePair {
+                birth: 0,
+                death: 100,
+            }],
             beta_1_pairs: vec![],
             beta_2_pairs: vec![],
             n_points: 2,
         };
         let b = PersistenceDiagram {
-            beta_0_pairs: vec![PersistencePair { birth: 0, death: 90 }],
+            beta_0_pairs: vec![PersistencePair {
+                birth: 0,
+                death: 90,
+            }],
             beta_1_pairs: vec![],
             beta_2_pairs: vec![],
             n_points: 2,
         };
         let (bottleneck, _) = bottleneck_distance(&a, &b);
-        assert!((bottleneck - 10.0).abs() < 1e-6, "bottleneck should be 10, got {bottleneck}");
+        assert!(
+            (bottleneck - 10.0).abs() < 1e-6,
+            "bottleneck should be 10, got {bottleneck}"
+        );
     }
 
     #[test]
     fn test_bottleneck_distance_missing_pairs_matched_to_diagonal() {
         let a = PersistenceDiagram {
-            beta_0_pairs: vec![PersistencePair { birth: 0, death: 100 }],
+            beta_0_pairs: vec![PersistencePair {
+                birth: 0,
+                death: 100,
+            }],
             beta_1_pairs: vec![],
             beta_2_pairs: vec![],
             n_points: 2,
@@ -558,7 +626,10 @@ mod tests {
             n_points: 1,
         };
         let (bottleneck, _) = bottleneck_distance(&a, &b);
-        assert!((bottleneck - 50.0).abs() < 1e-6, "bottleneck should be 50, got {bottleneck}");
+        assert!(
+            (bottleneck - 50.0).abs() < 1e-6,
+            "bottleneck should be 50, got {bottleneck}"
+        );
     }
 
     // ── Golden anti-resonance tests ──
@@ -577,7 +648,10 @@ mod tests {
     #[test]
     fn test_golden_anti_resonance_phi_aligned() {
         let d = PersistenceDiagram {
-            beta_0_pairs: vec![PersistencePair { birth: 0, death: 100 }],
+            beta_0_pairs: vec![PersistencePair {
+                birth: 0,
+                death: 100,
+            }],
             beta_1_pairs: vec![],
             beta_2_pairs: vec![],
             n_points: 2,
@@ -593,8 +667,14 @@ mod tests {
         let inv_phi_life = ((max_life as f64) / PHI).round() as i32; // ≈ 618
         let d = PersistenceDiagram {
             beta_0_pairs: vec![
-                PersistencePair { birth: 0, death: max_life },
-                PersistencePair { birth: 0, death: inv_phi_life },
+                PersistencePair {
+                    birth: 0,
+                    death: max_life,
+                },
+                PersistencePair {
+                    birth: 0,
+                    death: inv_phi_life,
+                },
             ],
             beta_1_pairs: vec![],
             beta_2_pairs: vec![],
@@ -602,6 +682,9 @@ mod tests {
         };
         let penalty = golden_anti_resonance(&d);
         // The inv_phi pair ratio = 618/1000 = 0.618 ≈ 1/φ, should produce non-trivial penalty
-        assert!(penalty > 0.2, "penalty should be significant near 1/φ, got {penalty}");
+        assert!(
+            penalty > 0.2,
+            "penalty should be significant near 1/φ, got {penalty}"
+        );
     }
 }

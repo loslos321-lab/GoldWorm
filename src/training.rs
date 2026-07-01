@@ -7,12 +7,12 @@
 //! — all while respecting the static structural blueprint (no de novo
 //! synaptogenesis).
 
-use std::cell::Cell;
-use ndarray::{Array1, Array2, Zip};
-use crate::{CoreError, Result};
 use crate::geometry::MANIFOLD_DIM;
-use crate::worm_brain::{WormBrain, GROUP_A, PHI};
+use crate::worm_brain::{GROUP_A, PHI, WormBrain};
+use crate::{CoreError, Result};
 use fastrand;
+use ndarray::{Array1, Array2, Zip};
+use std::cell::Cell;
 
 /// Hebbian plasticity trainer for the 302-neuron *C. elegans* connectome.
 ///
@@ -170,20 +170,31 @@ impl WormTrainer {
             for (i, &val) in sorted_hebb.iter().enumerate() {
                 cumsum += val;
                 let t = (cumsum - 1.0) / (i + 1) as f32;
-                if t < val { tau = t; }
+                if t < val {
+                    tau = t;
+                }
             }
             h.mapv_inplace(|v| (v - tau).max(0.0));
             h
         };
 
         // Fused Hebbian + φ-phase oscillation for all synapses.
-        let phase = ((self.step.get() as f64 * std::f64::consts::PI / PHI).cos() * 0.15 + 0.85) as f32;
-        let phase_delta = if (phase - 1.0).abs() > 1e-6 { phase - 1.0 } else { 0.0 };
+        let phase =
+            ((self.step.get() as f64 * std::f64::consts::PI / PHI).cos() * 0.15 + 0.85) as f32;
+        let phase_delta = if (phase - 1.0).abs() > 1e-6 {
+            phase - 1.0
+        } else {
+            0.0
+        };
         for i in 0..n {
             let ai = hebb[i];
-            if ai == 0.0 { continue; }
+            if ai == 0.0 {
+                continue;
+            }
             for j in 0..n {
-                if !self.structural_mask[(i, j)] { continue; }
+                if !self.structural_mask[(i, j)] {
+                    continue;
+                }
                 let cofire = ai * hebb[j];
                 let mut delta = lr * cofire;
                 if i < GROUP_A && j >= GROUP_A && phase_delta != 0.0 {
@@ -223,7 +234,9 @@ impl WormTrainer {
         if !self.use_capped_training {
             for i in 0..n {
                 let pi = pre_synaptic[i];
-                if pi == 0.0 { continue; }
+                if pi == 0.0 {
+                    continue;
+                }
                 for j in 0..MANIFOLD_DIM {
                     brain.input_projection[(i, j)] += lr * pi * input_key[j];
                 }
@@ -307,14 +320,18 @@ impl WormTrainer {
         let n = brain.neuron_count;
 
         // 1. RMS-normalise the pre-synaptic state (matching route_signal).
-        let rms = (pre_state.mapv(|v| v * v).sum() / n as f32).sqrt().max(1e-8);
+        let rms = (pre_state.mapv(|v| v * v).sum() / n as f32)
+            .sqrt()
+            .max(1e-8);
         let inv_rms = 1.0 / rms;
         let scaled_state: Array1<f32> = pre_state.mapv(|v| v * inv_rms);
 
         // 2. Forward through the dendritic tree.
         //    (We don't need the blended output — the activation is already
         //     the sparsemax of the blended state.)
-        let _tree_out = brain.dendritic_tree.forward(&scaled_state, brain.creative_k);
+        let _tree_out = brain
+            .dendritic_tree
+            .forward(&scaled_state, brain.creative_k);
 
         // 3. Error signal through the 70/30 blend.
         //    δ_tree = δ_activation * 0.7  (ignore quad backward — no gradient
@@ -324,7 +341,10 @@ impl WormTrainer {
         // 4. Reverse Valve backward.
         brain.dendritic_tree.zero_gradients();
         let _ = brain.dendritic_tree.reverse_valve_backward(
-            &scaled_state, &d_output, self.dendritic_pruning_rate, brain.creative_k,
+            &scaled_state,
+            &d_output,
+            self.dendritic_pruning_rate,
+            brain.creative_k,
         );
 
         // 5. Apply gradients (weights + thresholds).
@@ -369,24 +389,28 @@ impl WormTrainer {
     /// # Panics
     /// * Never — production paths are panic-free.
     #[inline]
-    pub fn contrastive_step(
-        &self,
-        brain: &mut WormBrain,
-        activations: &[Array1<f32>],
-    ) {
+    pub fn contrastive_step(&self, brain: &mut WormBrain, activations: &[Array1<f32>]) {
         let lr = self.contrastive_lr;
-        if lr <= 0.0 || activations.len() < 2 { return; }
+        if lr <= 0.0 || activations.len() < 2 {
+            return;
+        }
         let n = brain.neuron_count;
         for a in 0..activations.len() {
             for b in (a + 1)..activations.len() {
                 let diff: Array1<f32> = &activations[a] - &activations[b];
                 let diff_norm = diff.dot(&diff).sqrt();
-                if diff_norm < 1e-6 { continue; }
+                if diff_norm < 1e-6 {
+                    continue;
+                }
                 for i in 0..n {
                     let di = diff[i];
-                    if di.abs() < 1e-6 { continue; }
+                    if di.abs() < 1e-6 {
+                        continue;
+                    }
                     for j in 0..n {
-                        if !self.structural_mask[(i, j)] { continue; }
+                        if !self.structural_mask[(i, j)] {
+                            continue;
+                        }
                         // Sparse contrastive: only update synapses where di
                         // and diff[j] have OPPOSITE signs.  This concentrates
                         // the contrastive signal on the decision boundary
@@ -395,8 +419,8 @@ impl WormTrainer {
                         let dj = diff[j];
                         if di * dj < 0.0 {
                             let hebb = di * dj;
-                            brain.synapses[(i, j)] = (brain.synapses[(i, j)]
-                                + lr * hebb).max(0.0).min(1.0);
+                            brain.synapses[(i, j)] =
+                                (brain.synapses[(i, j)] + lr * hebb).max(0.0).min(1.0);
                         }
                     }
                 }
@@ -439,13 +463,22 @@ impl WormTrainer {
 
         // Fused co-firing + mutual induction — no 302×302 allocation.
         let act = activation_state.view();
-        let phase = ((self.step.get() as f64 * std::f64::consts::PI / PHI).cos() * 0.15 + 0.85) as f32;
-        let phase_delta = if (phase - 1.0).abs() > 1e-6 { phase - 1.0 } else { 0.0 };
+        let phase =
+            ((self.step.get() as f64 * std::f64::consts::PI / PHI).cos() * 0.15 + 0.85) as f32;
+        let phase_delta = if (phase - 1.0).abs() > 1e-6 {
+            phase - 1.0
+        } else {
+            0.0
+        };
         for i in 0..n {
             let ai = act[i];
-            if ai == 0.0 { continue; }
+            if ai == 0.0 {
+                continue;
+            }
             for j in 0..n {
-                if !self.structural_mask[(i, j)] { continue; }
+                if !self.structural_mask[(i, j)] {
+                    continue;
+                }
                 let cofire = ai * act[j];
                 let mut delta = lr * cofire;
                 if i < GROUP_A && j >= GROUP_A && phase_delta != 0.0 {
@@ -471,7 +504,12 @@ impl WormTrainer {
 
         // 5. Row-normalise to [0, 1].
         for i in 0..n {
-            let max_val = brain.synapses.row(i).iter().copied().fold(0.0_f32, f32::max);
+            let max_val = brain
+                .synapses
+                .row(i)
+                .iter()
+                .copied()
+                .fold(0.0_f32, f32::max);
             if max_val > 0.0 {
                 for val in brain.synapses.row_mut(i).iter_mut() {
                     *val /= max_val;
@@ -485,7 +523,9 @@ impl WormTrainer {
         // 6. Projection Hebbian update: ΔP = lr · pre_synaptic ⊗ input_key
         for i in 0..n {
             let pi = pre_synaptic[i];
-            if pi == 0.0 { continue; }
+            if pi == 0.0 {
+                continue;
+            }
             for j in 0..MANIFOLD_DIM {
                 brain.input_projection[(i, j)] += lr * pi * input_key[j];
             }
@@ -516,7 +556,8 @@ impl WormTrainer {
             for &val in brain.input_projection.iter() {
                 if !val.is_finite() {
                     return Err(CoreError::Numerical(
-                        "non-finite value in input_projection after damped training step".to_string(),
+                        "non-finite value in input_projection after damped training step"
+                            .to_string(),
                     ));
                 }
             }
@@ -554,7 +595,8 @@ impl WormTrainer {
         let a_gpu = engine.host_to_tensor_1d_f32(&flat_a, "activation")?;
 
         // Build the mask once (constant)
-        let mask_flat: Vec<f32> = self.structural_mask
+        let mask_flat: Vec<f32> = self
+            .structural_mask
             .iter()
             .map(|&b| if b { 1.0 } else { 0.0 })
             .collect();
@@ -562,8 +604,12 @@ impl WormTrainer {
 
         // Execute damped step on GPU
         let (s_new, v_new) = engine.damped_step(
-            &w_gpu, &v_gpu, &mask_gpu, &a_gpu,
-            self.learning_rate, self.damping_factor,
+            &w_gpu,
+            &v_gpu,
+            &mask_gpu,
+            &a_gpu,
+            self.learning_rate,
+            self.damping_factor,
         )?;
 
         // Sync back to host
@@ -572,10 +618,14 @@ impl WormTrainer {
 
         if self.safe_mode {
             if flat_s.iter().any(|v| !v.is_finite()) {
-                return Err(CoreError::Numerical("synapses after damped step contain non-finite values".into()));
+                return Err(CoreError::Numerical(
+                    "synapses after damped step contain non-finite values".into(),
+                ));
             }
             if flat_v2.iter().any(|v| !v.is_finite()) {
-                return Err(CoreError::Numerical("velocities after damped step contain non-finite values".into()));
+                return Err(CoreError::Numerical(
+                    "velocities after damped step contain non-finite values".into(),
+                ));
             }
         }
 
@@ -611,7 +661,8 @@ impl WormTrainer {
 
         let flat_w: Vec<f32> = brain.synapses.iter().copied().collect();
         let flat_v: Vec<f32> = brain.velocities.iter().copied().collect();
-        let mask_flat: Vec<f32> = self.structural_mask
+        let mask_flat: Vec<f32> = self
+            .structural_mask
             .iter()
             .map(|&b| if b { 1.0 } else { 0.0 })
             .collect();
@@ -622,8 +673,13 @@ impl WormTrainer {
             .collect();
 
         let (flat_s, flat_v2) = engine.batch_damped_step(
-            &flat_w, &flat_v, &mask_flat, &act_flat, batch_size,
-            self.learning_rate, self.damping_factor,
+            &flat_w,
+            &flat_v,
+            &mask_flat,
+            &act_flat,
+            batch_size,
+            self.learning_rate,
+            self.damping_factor,
         )?;
 
         if self.safe_mode {
@@ -673,7 +729,8 @@ impl WormTrainer {
         let proj_flat: Vec<f32> = brain.input_projection().iter().copied().collect();
         let flat_w: Vec<f32> = brain.synapses.iter().copied().collect();
         let flat_v: Vec<f32> = brain.velocities.iter().copied().collect();
-        let mask_flat: Vec<f32> = self.structural_mask
+        let mask_flat: Vec<f32> = self
+            .structural_mask
             .iter()
             .map(|&b| if b { 1.0 } else { 0.0 })
             .collect();
@@ -684,9 +741,14 @@ impl WormTrainer {
             .collect();
 
         let (flat_s, flat_v2) = engine.batch_route_and_train(
-            &proj_flat, &flat_w, &flat_v, &mask_flat,
-            &coords_flat, batch_size,
-            self.learning_rate, self.damping_factor,
+            &proj_flat,
+            &flat_w,
+            &flat_v,
+            &mask_flat,
+            &coords_flat,
+            batch_size,
+            self.learning_rate,
+            self.damping_factor,
         )?;
 
         if self.safe_mode {
@@ -732,15 +794,21 @@ impl WormTrainer {
         let proj_flat: Vec<f32> = brain.input_projection().iter().copied().collect();
         let flat_w: Vec<f32> = brain.synapses.iter().copied().collect();
         let flat_v: Vec<f32> = brain.velocities.iter().copied().collect();
-        let mask_flat: Vec<f32> = self.structural_mask
+        let mask_flat: Vec<f32> = self
+            .structural_mask
             .iter()
             .map(|&b| if b { 1.0 } else { 0.0 })
             .collect();
 
         let (flat_s, flat_v2) = engine.batch_route_and_train(
-            &proj_flat, &flat_w, &flat_v, &mask_flat,
-            coords_flat, batch_size,
-            self.learning_rate, self.damping_factor,
+            &proj_flat,
+            &flat_w,
+            &flat_v,
+            &mask_flat,
+            coords_flat,
+            batch_size,
+            self.learning_rate,
+            self.damping_factor,
         )?;
 
         if self.safe_mode {
@@ -842,7 +910,9 @@ mod tests {
 
         // Run several training steps to strengthen the 0↔1↔2 sub-circuit.
         for _ in 0..10 {
-            trainer.train_step(&mut brain, &activation, &pre_synaptic, &input_key).unwrap();
+            trainer
+                .train_step(&mut brain, &activation, &pre_synaptic, &input_key)
+                .unwrap();
         }
 
         // Invariant 1: structural zero connections MUST remain zero.
@@ -850,9 +920,11 @@ mod tests {
             for j in 0..302 {
                 if initial_synapses[(i, j)] == 0.0 {
                     assert_eq!(
-                        brain.synapses[(i, j)], 0.0,
+                        brain.synapses[(i, j)],
+                        0.0,
                         "synapse ({},{}) became non-zero despite no structural connection",
-                        i, j,
+                        i,
+                        j,
                     );
                 }
             }
@@ -860,11 +932,7 @@ mod tests {
 
         // Invariant 2: all weights lie in [0, 1].
         for &w in brain.synapses.iter() {
-            assert!(
-                w >= 0.0 && w <= 1.0 + 1e-12,
-                "weight {} outside [0, 1]",
-                w,
-            );
+            assert!(w >= 0.0 && w <= 1.0 + 1e-12, "weight {} outside [0, 1]", w,);
         }
 
         // Invariant 3: every row's maximum is normalised to ≤ 1.0.
@@ -875,12 +943,7 @@ mod tests {
                 .iter()
                 .copied()
                 .fold(0.0_f32, f32::max);
-            assert!(
-                row_max <= 1.0 + 1e-6,
-                "row {} has max {} > 1.0",
-                i,
-                row_max,
-            );
+            assert!(row_max <= 1.0 + 1e-6, "row {} has max {} > 1.0", i, row_max,);
         }
 
         // Invariant 4: co-firing pathways (0↔1, 0↔2) are measurably
@@ -986,9 +1049,11 @@ mod tests {
         for i in 0..302 {
             for j in 0..302 {
                 assert_eq!(
-                    brain.synapses[(i, j)], baseline.synapses[(i, j)],
+                    brain.synapses[(i, j)],
+                    baseline.synapses[(i, j)],
                     "synapse ({},{}) was modified despite quad_routing dispatch",
-                    i, j,
+                    i,
+                    j,
                 );
             }
         }
@@ -1002,7 +1067,10 @@ mod tests {
         brain.quad_routing = true;
 
         let trainer = WormTrainer::new(0.1, 0.99);
-        assert_eq!(trainer.dendritic_lr, 0.0, "dendritic_lr should be 0 by default");
+        assert_eq!(
+            trainer.dendritic_lr, 0.0,
+            "dendritic_lr should be 0 by default"
+        );
 
         let mut activation = Array1::zeros(302);
         activation[0] = 1.0;
@@ -1089,9 +1157,11 @@ mod tests {
         for i in 0..302 {
             for j in 0..302 {
                 assert_eq!(
-                    brain.synapses[(i, j)], synapses_before[(i, j)],
+                    brain.synapses[(i, j)],
+                    synapses_before[(i, j)],
                     "synapses should not change via dendritic training path, but ({},{}) changed",
-                    i, j,
+                    i,
+                    j,
                 );
             }
         }

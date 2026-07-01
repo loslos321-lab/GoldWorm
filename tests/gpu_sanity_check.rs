@@ -12,19 +12,22 @@
 use std::process::Command;
 
 #[cfg(feature = "cuda")]
-use utophiecorn_architecture::gpu::GpuEngine;
+use ndarray::Array1;
 #[cfg(feature = "cuda")]
-use utophiecorn_architecture::worm_brain::WormBrain;
+use utophiecorn_architecture::gpu::GpuEngine;
 #[cfg(feature = "cuda")]
 use utophiecorn_architecture::training::WormTrainer;
 #[cfg(feature = "cuda")]
-use ndarray::Array1;
+use utophiecorn_architecture::worm_brain::WormBrain;
 
 /// Print current GPU VRAM usage by parsing nvidia-smi output.
 #[allow(dead_code)]
 fn print_gpu_vram(label: &str) {
     let output = Command::new("nvidia-smi")
-        .args(["--query-gpu=index,name,memory.used,memory.total", "--format=csv,noheader"])
+        .args([
+            "--query-gpu=index,name,memory.used,memory.total",
+            "--format=csv,noheader",
+        ])
         .output();
 
     match output {
@@ -82,8 +85,10 @@ fn run_gpu_sanity() -> Result<(), Box<dyn std::error::Error>> {
     // 4. Create WormTrainer with default params
     println!("  step 3: WormTrainer::new()...");
     let trainer = WormTrainer::new(0.01, 0.99);
-    println!("  ✓ WormTrainer created (lr={}, stabilize={})",
-        trainer.learning_rate, trainer.stabilization_factor);
+    println!(
+        "  ✓ WormTrainer created (lr={}, stabilize={})",
+        trainer.learning_rate, trainer.stabilization_factor
+    );
 
     // 5. Create a dummy 302-D activation (non-zero to trigger co-firing)
     println!("  step 4: creating dummy activation...");
@@ -94,7 +99,10 @@ fn run_gpu_sanity() -> Result<(), Box<dyn std::error::Error>> {
             activation[i] = 0.85;
         }
     }
-    println!("  ✓ Activation vector created ({} nonzero entries)", activation.iter().filter(|&&v| v > 0.0).count());
+    println!(
+        "  ✓ Activation vector created ({} nonzero entries)",
+        activation.iter().filter(|&&v| v > 0.0).count()
+    );
 
     // 6. Execute one GPU damped training step
     println!("  step 5: executing train_step_gpu...");
@@ -107,7 +115,7 @@ fn run_gpu_sanity() -> Result<(), Box<dyn std::error::Error>> {
                 let text = String::from_utf8_lossy(&out.stdout);
                 text.trim().to_string()
             }
-            _ => "unknown".to_string()
+            _ => "unknown".to_string(),
         }
     };
 
@@ -122,7 +130,7 @@ fn run_gpu_sanity() -> Result<(), Box<dyn std::error::Error>> {
                 let text = String::from_utf8_lossy(&out.stdout);
                 text.trim().to_string()
             }
-            _ => "unknown".to_string()
+            _ => "unknown".to_string(),
         }
     };
 
@@ -142,13 +150,16 @@ fn run_gpu_sanity() -> Result<(), Box<dyn std::error::Error>> {
     println!("  ✓ All weights finite and in [0,1]");
 
     // Verify no de novo synaptogenesis: zero positions remain zero
-    let nonzero_diff = (&brain.synapses - &saved_synapses).mapv(|v| v.abs())
+    let nonzero_diff = (&brain.synapses - &saved_synapses)
+        .mapv(|v| v.abs())
         .iter()
         .zip(saved_synapses.iter())
         .filter(|&(diff, orig)| *diff > 0.0 && *orig == 0.0)
         .count();
     if nonzero_diff > 0 {
-        println!("  ⚠ {nonzero_diff} new synapses appeared (structrual blueprint not strictly enforced)");
+        println!(
+            "  ⚠ {nonzero_diff} new synapses appeared (structrual blueprint not strictly enforced)"
+        );
     } else {
         println!("  ✓ No de novo synaptogenesis detected");
     }

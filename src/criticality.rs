@@ -40,7 +40,9 @@ impl CriticalityController {
     /// Default: k = 0.69 gives α ≈ 2 (exact sparsemax, standard behaviour).
     #[inline]
     pub fn default() -> Self {
-        Self { k: std::f64::consts::LN_2 as f32 }
+        Self {
+            k: std::f64::consts::LN_2 as f32,
+        }
     }
 
     /// Map k to the α-entmax parameter.
@@ -107,11 +109,7 @@ impl CriticalityDashboard {
     /// - `activation`: 302-D sparsemax output (probability simplex).
     /// - `trajectory`: optional recent activation history for correlation.
     /// - `holonomy`: holonomy from gradient compression (or 0.0).
-    pub fn compute(
-        activation: &[f32],
-        trajectory: Option<&[Vec<f32>]>,
-        holonomy: f64,
-    ) -> Self {
+    pub fn compute(activation: &[f32], trajectory: Option<&[Vec<f32>]>, holonomy: f64) -> Self {
         let branching_ratio = Self::compute_branching_ratio(activation);
         let betti_entropy = Self::compute_betti_entropy(activation);
         let correlation_length = trajectory
@@ -290,7 +288,11 @@ mod tests {
         let cc = CriticalityController::new(10.0);
         // α(10) ≈ 1 + 2·exp(-10) ≈ 1.00009
         let alpha = cc.alpha();
-        assert!(alpha > 1.0 && alpha < 1.001, "α({}) should approach 1", alpha);
+        assert!(
+            alpha > 1.0 && alpha < 1.001,
+            "α({}) should approach 1",
+            alpha
+        );
     }
 
     #[test]
@@ -346,7 +348,10 @@ mod tests {
         let uniform = vec![1.0 / n as f32; n];
         let ratio = CriticalityDashboard::compute_branching_ratio(&uniform);
         // f32→f64 conversion causes tiny error; accept < 0.001
-        assert!(ratio < 0.001, "uniform should have near-zero branching ratio, got {ratio}");
+        assert!(
+            ratio < 0.001,
+            "uniform should have near-zero branching ratio, got {ratio}"
+        );
     }
 
     #[test]
@@ -363,7 +368,10 @@ mod tests {
         let uniform = vec![1.0 / n as f32; n];
         let entropy = CriticalityDashboard::compute_betti_entropy(&uniform);
         let expected = (n as f64).ln();
-        assert!((entropy - expected).abs() < 1e-6, "uniform entropy should be ln(n)");
+        assert!(
+            (entropy - expected).abs() < 1e-6,
+            "uniform entropy should be ln(n)"
+        );
     }
 
     #[test]
@@ -371,7 +379,10 @@ mod tests {
         let mut one_hot = vec![0.0f32; 302];
         one_hot[0] = 1.0;
         let entropy = CriticalityDashboard::compute_betti_entropy(&one_hot);
-        assert!(entropy < 1e-10, "one-hot entropy should be near 0, got {entropy}");
+        assert!(
+            entropy < 1e-10,
+            "one-hot entropy should be near 0, got {entropy}"
+        );
     }
 
     #[test]
@@ -379,7 +390,10 @@ mod tests {
         let act = vec![0.1f32; 302];
         let traj = vec![act.clone(), act];
         let corr = CriticalityDashboard::compute_correlation_length(&traj);
-        assert!((corr - 1.0).abs() < 1e-6, "identical activations should have cos=1");
+        assert!(
+            (corr - 1.0).abs() < 1e-6,
+            "identical activations should have cos=1"
+        );
     }
 
     #[test]
@@ -400,7 +414,11 @@ mod tests {
     fn test_dashboard_compute_roundtrip() {
         let activation = vec![1.0 / 302.0; 302];
         let dashboard = CriticalityDashboard::compute(&activation, None, 0.42);
-        assert!(dashboard.branching_ratio < 1.0, "branching ratio bounded, got {}", dashboard.branching_ratio);
+        assert!(
+            dashboard.branching_ratio < 1.0,
+            "branching ratio bounded, got {}",
+            dashboard.branching_ratio
+        );
         assert!((dashboard.betti_entropy - (302.0_f64).ln()).abs() < 1e-6);
         assert_eq!(dashboard.holonomy, 0.42);
     }
@@ -417,6 +435,9 @@ mod tests {
             vec![0.6f32; 302],
         ];
         let dashboard = CriticalityDashboard::compute(&activation, Some(&traj), 0.0);
-        assert!(dashboard.correlation_length > 0.9, "similar activations should give high correlation");
+        assert!(
+            dashboard.correlation_length > 0.9,
+            "similar activations should give high correlation"
+        );
     }
 }

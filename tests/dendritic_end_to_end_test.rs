@@ -21,11 +21,11 @@ const MANIFOLD_DIM: usize = 128;
 use utophiecorn_architecture::{
     criticality::CriticalityDashboard,
     geometry::{
-        self, load_semantic_embeddings, modified_gram_schmidt, token_to_coord, OrthonormalBasis,
-        VOCABULARY_PATH, VOCAB_EMBEDDINGS_PATH,
+        self, OrthonormalBasis, VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH, load_semantic_embeddings,
+        modified_gram_schmidt, token_to_coord,
     },
     training::WormTrainer,
-    worm_brain::{compute_vocab_activations, WormBrain},
+    worm_brain::{WormBrain, compute_vocab_activations},
 };
 
 const SENTENCES: &[&str] = &["fire burn hot", "ice freeze cold", "ocean wave tide"];
@@ -190,11 +190,7 @@ fn mean_coherence(brain: &WormBrain, sentences: &[&str]) -> f64 {
         total += within_sentence_coherence(brain, s);
         count += 1;
     }
-    if count > 0 {
-        total / count as f64
-    } else {
-        0.0
-    }
+    if count > 0 { total / count as f64 } else { 0.0 }
 }
 
 fn neuron_top_k(act: &Array1<f32>, k: usize) -> Vec<usize> {
@@ -377,7 +373,9 @@ fn test_dendritic_gate_3abc() {
 
             brain.creative_k = creative_k;
 
-            eprintln!("    iter {iter:>4}: collapse={cs:.4} coherence={ch:.4} σ={sigma:.3} k={creative_k:.3} k_raw={k_raw:.3}");
+            eprintln!(
+                "    iter {iter:>4}: collapse={cs:.4} coherence={ch:.4} σ={sigma:.3} k={creative_k:.3} k_raw={k_raw:.3}"
+            );
         }
     }
 
@@ -608,10 +606,7 @@ fn test_dendritic_gate_3abc() {
 
     // ── Certificate Table ──
     let all_echo_ok = has_cold && has_hot && has_water;
-    let certified = no_collapse
-        && coherence_improved
-        && sigma_stable
-        && all_unique;
+    let certified = no_collapse && coherence_improved && sigma_stable && all_unique;
     eprintln!();
     eprintln!("╔═══ Dendritic Echo Validation Certificate ═══╗");
     eprintln!("║                                             ║");

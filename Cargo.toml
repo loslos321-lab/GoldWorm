@@ -1,5 +1,6 @@
 [package]
 name = "goldworm"
+default-run = "goldworn"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
@@ -23,3 +24,4 @@ fastrand = "2"
 rustyline = "15"
 rustyline-derive = "0.12"
 candle-core = { version = "0.11.0", optional = true, default-features = false }
+tiny_http = "0.12"

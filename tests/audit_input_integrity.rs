@@ -1,7 +1,9 @@
-use utophiecorn_architecture::geometry::{load_semantic_embeddings, token_to_coord, MANIFOLD_DIM, VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH};
-use utophiecorn_architecture::worm_brain::WormBrain;
 use ndarray::Array1;
 use std::io::Write;
+use utophiecorn_architecture::geometry::{
+    MANIFOLD_DIM, VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH, load_semantic_embeddings, token_to_coord,
+};
+use utophiecorn_architecture::worm_brain::WormBrain;
 
 fn print_matrix(label: &str, matrix: &[Vec<f64>], tokens: &[&str; 5]) {
     println!("--- {} ---", label);
@@ -74,8 +76,7 @@ fn audit_input_integrity() {
     let mut l2_302d = vec![vec![0.0f64; n]; n];
     for i in 0..n {
         for j in 0..n {
-            l2_302d[i][j] =
-                ((&acts[i] - &acts[j]).mapv(|x| x * x).sum() as f64).sqrt();
+            l2_302d[i][j] = ((&acts[i] - &acts[j]).mapv(|x| x * x).sum() as f64).sqrt();
         }
     }
 
@@ -84,30 +85,20 @@ fn audit_input_integrity() {
     for d in 0..MANIFOLD_DIM {
         let vals: Vec<f64> = coords.iter().map(|c| c[d]).collect();
         let mean: f64 = vals.iter().sum::<f64>() / n as f64;
-        variance[d] = vals
-            .iter()
-            .map(|x| (x - mean).powi(2))
-            .sum::<f64>()
-            / n as f64;
+        variance[d] = vals.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / n as f64;
     }
 
     // Zero-input test
     let zero = Array1::<f64>::zeros(MANIFOLD_DIM);
     let (zero_act, _) = brain.route_signal(&zero).unwrap();
-    let max_abs = zero_act
-        .iter()
-        .map(|x| x.abs())
-        .fold(0.0f32, f32::max);
+    let max_abs = zero_act.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
     let l2_norm = zero_act.dot(&zero_act).sqrt();
     let non_zero = zero_act.iter().filter(|&&x| x.abs() > 1e-6).count();
 
     // Input projection analysis
     let proj = brain.input_projection();
     let zero_proj = proj.dot(&Array1::<f32>::zeros(MANIFOLD_DIM));
-    let zero_proj_inf = zero_proj
-        .iter()
-        .map(|x| x.abs())
-        .fold(0.0f32, f32::max);
+    let zero_proj_inf = zero_proj.iter().map(|x| x.abs()).fold(0.0f32, f32::max);
     let count_f = (302 * MANIFOLD_DIM) as f64;
     let frob: f64 = proj
         .iter()
@@ -122,10 +113,7 @@ fn audit_input_integrity() {
         / count_f)
         .sqrt();
     let min: f32 = proj.iter().copied().fold(f32::INFINITY, f32::min);
-    let max: f32 = proj
-        .iter()
-        .copied()
-        .fold(f32::NEG_INFINITY, f32::max);
+    let max: f32 = proj.iter().copied().fold(f32::NEG_INFINITY, f32::max);
 
     // ── OUTPUT ──
     println!("=== AUDIT 1: INPUT VECTOR INTEGRITY ===");
@@ -135,8 +123,11 @@ fn audit_input_integrity() {
     // Token coordinates
     println!("--- Token Coordinates (128-D) ---");
     for (i, token) in tokens.iter().enumerate() {
-        let vals: Vec<String> =
-            coords[i].iter().take(4).map(|v| format!("{:.4}", v)).collect();
+        let vals: Vec<String> = coords[i]
+            .iter()
+            .take(4)
+            .map(|v| format!("{:.4}", v))
+            .collect();
         println!(
             "TOKEN: {:?}  norm={:.4}  coords=[{}, ...]",
             token,
@@ -150,11 +141,7 @@ fn audit_input_integrity() {
     // Matrices
     let tlabels = &["quantum", "neuron", "memory", "signal", "synapse"];
     print_matrix("Pairwise Cosine Similarity (128-D)", &cos_16d, tlabels);
-    print_matrix(
-        "Pairwise Cosine Similarity (302-D)",
-        &cos_302d,
-        tlabels,
-    );
+    print_matrix("Pairwise Cosine Similarity (302-D)", &cos_302d, tlabels);
     print_matrix("Pairwise L2 Distance (128-D)", &l2_16d, tlabels);
     print_matrix("Pairwise L2 Distance (302-D)", &l2_302d, tlabels);
 
@@ -221,8 +208,5 @@ fn audit_input_integrity() {
         "Zero-Input Integrity FAIL: max_abs = {} > 0.01",
         max_abs
     );
-    assert!(
-        !collision,
-        "Collision Check FAIL: some cos_302d > 0.95"
-    );
+    assert!(!collision, "Collision Check FAIL: some cos_302d > 0.95");
 }

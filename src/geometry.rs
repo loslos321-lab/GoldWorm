@@ -14,10 +14,10 @@
 //! - Explicit `+ use<'a>` lifetime capture on free-function `impl Trait` returns.
 //! - `#[inline]` on every hot-path method for static dispatch.
 
+use crate::{CoreError, Result};
+use ndarray::{Array1, Array2, ArrayView1, s};
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
-use ndarray::{Array1, Array2, ArrayView1, s};
-use crate::{CoreError, Result};
 
 /// Fixed dimension of the token coordinate manifold.
 pub const MANIFOLD_DIM: usize = 128;
@@ -161,7 +161,8 @@ impl TokenCoord {
     /// GOLDEN_OVERLAP..GOLDEN_MAJOR).
     #[inline]
     pub fn overlap_view(&self) -> ArrayView1<'_, f64> {
-        self.0.slice(ndarray::s![GOLDEN_MAJOR - GOLDEN_OVERLAP..GOLDEN_MAJOR])
+        self.0
+            .slice(ndarray::s![GOLDEN_MAJOR - GOLDEN_OVERLAP..GOLDEN_MAJOR])
     }
 }
 
@@ -246,7 +247,10 @@ impl BasisVectors for OrthonormalBasis {
 /// Uses native RPITIT to eliminate trait-object overhead and heap allocation.
 pub trait PointCloudTransform {
     /// Transform a slice of input points into an owned iterator of output points.
-    fn transform<'a>(&self, points: &'a [TokenCoord]) -> impl Iterator<Item = TokenCoord> + use<'a, Self>;
+    fn transform<'a>(
+        &self,
+        points: &'a [TokenCoord],
+    ) -> impl Iterator<Item = TokenCoord> + use<'a, Self>;
 }
 
 /// Performs **Modified Gram-Schmidt** orthogonalization on a collection of vectors.
@@ -262,10 +266,7 @@ pub trait PointCloudTransform {
 /// # Errors
 /// * [`CoreError::Geometry`] if the input is empty or all vectors collapse.
 #[inline]
-pub fn modified_gram_schmidt(
-    vectors: &[TokenCoord],
-    tolerance: f64,
-) -> Result<OrthonormalBasis> {
+pub fn modified_gram_schmidt(vectors: &[TokenCoord], tolerance: f64) -> Result<OrthonormalBasis> {
     if vectors.is_empty() {
         return Err(CoreError::Geometry(
             "cannot orthogonalize empty vector set".to_string(),
@@ -357,9 +358,17 @@ pub fn grassmannian_fusion(a: &TokenCoord, b: &TokenCoord) -> Result<TokenCoord>
     // their 2-D coordinates (coefficients along each basis direction).
     // These are the components in the orthonormal frame, NOT ambient coords.
     let coeff_a0 = a.inner().dot(&basis.vectors.column(0));
-    let coeff_a1 = if basis.rank > 1 { a.inner().dot(&basis.vectors.column(1)) } else { 0.0 };
+    let coeff_a1 = if basis.rank > 1 {
+        a.inner().dot(&basis.vectors.column(1))
+    } else {
+        0.0
+    };
     let coeff_b0 = b.inner().dot(&basis.vectors.column(0));
-    let coeff_b1 = if basis.rank > 1 { b.inner().dot(&basis.vectors.column(1)) } else { 0.0 };
+    let coeff_b1 = if basis.rank > 1 {
+        b.inner().dot(&basis.vectors.column(1))
+    } else {
+        0.0
+    };
 
     // Step 3: Wedge product = signed area in the 2-D subspace.
     // This is the Clifford bivector component a∧b, anti-symmetric under swap.
@@ -452,18 +461,17 @@ pub fn init_semantic_vocabulary(documents: &[Vec<String>]) -> Result<()> {
 ///   - vocab_embeddings.bin existiert → load_semantic_embeddings()
 ///   - sonst → init_semantic_vocabulary(documents)
 /// Rufe NIEMALS beide hintereinander auf.
-pub fn load_semantic_embeddings(
-    bin_path: &str,
-    vocab_source: &str,
-) -> Result<()> {
-    let bin_data = std::fs::read(bin_path)
-        .map_err(|e| CoreError::Bridge(
-            format!("failed to read semantic embeddings '{bin_path}': {e}")
-        ))?;
+pub fn load_semantic_embeddings(bin_path: &str, vocab_source: &str) -> Result<()> {
+    let bin_data = std::fs::read(bin_path).map_err(|e| {
+        CoreError::Bridge(format!(
+            "failed to read semantic embeddings '{bin_path}': {e}"
+        ))
+    })?;
 
     if bin_data.len() < 12 {
         return Err(CoreError::Bridge(format!(
-            "semantic embeddings file too small: {} bytes", bin_data.len()
+            "semantic embeddings file too small: {} bytes",
+            bin_data.len()
         )));
     }
 
@@ -476,9 +484,7 @@ pub fn load_semantic_embeddings(
     let count_str = std::str::from_utf8(&bin_data[4..12])
         .map_err(|_| CoreError::Bridge("non-utf8 count in header".into()))?;
     let count = usize::from_str_radix(count_str, 16)
-        .map_err(|_| CoreError::Bridge(format!(
-            "bad hex count '{count_str}' in header"
-        )))?;
+        .map_err(|_| CoreError::Bridge(format!("bad hex count '{count_str}' in header")))?;
 
     let data_start = 12usize;
     let row_bytes = MANIFOLD_DIM * 8;
@@ -486,7 +492,9 @@ pub fn load_semantic_embeddings(
     if bin_data.len() < expected {
         return Err(CoreError::Bridge(format!(
             "file truncated: {} bytes, expected >= {} (count={})",
-            bin_data.len(), expected, count
+            bin_data.len(),
+            expected,
+            count
         )));
     }
 
@@ -497,22 +505,20 @@ pub fn load_semantic_embeddings(
         for d in 0..MANIFOLD_DIM {
             let chunk = bin_data
                 .get(base + d * 8..base + (d + 1) * 8)
-                .ok_or_else(|| CoreError::Bridge(
-                    format!("corrupt embedding at entry {}, dim {}", i, d)
-                ))?;
-            let bytes: [u8; 8] = chunk.try_into()
-                .map_err(|_| CoreError::Bridge(format!(
-                    "misaligned f64 at entry {}, dim {}", i, d
-                )))?;
+                .ok_or_else(|| {
+                    CoreError::Bridge(format!("corrupt embedding at entry {}, dim {}", i, d))
+                })?;
+            let bytes: [u8; 8] = chunk.try_into().map_err(|_| {
+                CoreError::Bridge(format!("misaligned f64 at entry {}, dim {}", i, d))
+            })?;
             arr[d] = f64::from_le_bytes(bytes);
         }
         coords.push(arr);
     }
 
-    let content = std::fs::read_to_string(vocab_source)
-        .map_err(|e| CoreError::Bridge(format!(
-            "failed to read vocabulary '{vocab_source}': {e}"
-        )))?;
+    let content = std::fs::read_to_string(vocab_source).map_err(|e| {
+        CoreError::Bridge(format!("failed to read vocabulary '{vocab_source}': {e}"))
+    })?;
 
     let mut map = std::collections::HashMap::with_capacity(count);
     let mut idx = 0usize;
@@ -530,16 +536,17 @@ pub fn load_semantic_embeddings(
 
     if map.is_empty() {
         return Err(CoreError::Bridge(
-            "semantic embeddings produced empty vocabulary map".into()
+            "semantic embeddings produced empty vocabulary map".into(),
         ));
     }
 
-    SEMANTIC_VOCAB
-        .set(map)
-        .map_err(|_| CoreError::Bridge(
+    SEMANTIC_VOCAB.set(map).map_err(|_| {
+        CoreError::Bridge(
             "semantic vocabulary already initialised — call load_semantic_embeddings \
-             OR init_semantic_vocabulary, not both".into()
-        ))?;
+             OR init_semantic_vocabulary, not both"
+                .into(),
+        )
+    })?;
 
     Ok(())
 }
@@ -642,9 +649,8 @@ pub fn token_hash_coord(token: &str) -> TokenCoord {
     for d in 0..MANIFOLD_DIM {
         let mut v = 0.0_f64;
         for (k, &b) in bytes.iter().enumerate() {
-            let seed = (d as u64)
-                ^ ((k as u64) << 32)
-                ^ (b as u64).wrapping_mul(0x517cc1b727220a95);
+            let seed =
+                (d as u64) ^ ((k as u64) << 32) ^ (b as u64).wrapping_mul(0x517cc1b727220a95);
             let hash = splitmix64(seed);
             // Map [0, 2^64) → [-1, 1)
             let val = (hash >> 11) as f64 * (1.0 / (1u64 << 53) as f64);
@@ -732,30 +738,24 @@ pub const VOCAB_EMBEDDINGS_PATH: &str = "vocab_embeddings.bin";
 
 /// Whitelist of short structural words retained even though they are < 3 chars.
 const SHORT_WHITELIST: &[&str] = &[
-    "in", "on", "at", "an", "it", "is", "by", "to", "if", "as", "no", "or",
-    "me", "we", "he", "be", "my", "us", "am",
-    "do", "go",
-    "up", "so", "ok",
-    "ah", "oh", "um",
+    "in", "on", "at", "an", "it", "is", "by", "to", "if", "as", "no", "or", "me", "we", "he", "be",
+    "my", "us", "am", "do", "go", "up", "so", "ok", "ah", "oh", "um",
 ];
 
 /// Archaic / cryptic fragments that are dictionary artifacts rather than
 /// living English words.  These cause alphabetical clustering traps in the
 /// 128-D manifold and are excluded from the active vocabulary.
 const ARCHAIC_EXCLUSIONS: &[&str] = &[
-    "aby", "aci", "acy", "adz", "ahi", "aju", "ake", "alb", "alf", "ani",
-    "arb", "arf", "arn", "att", "auf", "awa", "awl", "awn", "aye", "ays",
-    "baa", "bap", "bys", "cee", "cep", "cis", "coz", "dah", "dak", "dap",
-    "dee", "deg", "dex", "dey", "dif", "dis", "dit", "dob", "dol", "doo",
-    "dop", "dos", "eau", "eke", "eld", "eme", "ems", "ere", "erg", "ern",
-    "err", "ese", "eta", "feg", "feh", "fem", "fet", "feu", "fey", "fez",
-    "fib", "fid", "foh", "fon", "fou", "fro", "fub", "fud", "fug", "gae",
-    "gam", "gat", "ged", "ghi", "gid", "gie", "gip", "gnu", "goa", "gop",
-    "gos", "gox", "hae", "heh", "hep", "hie", "hob", "hoc", "hod", "ich",
-    "ick", "iff", "ism", "jee", "jow", "keg", "kip", "lek", "maw", "nth",
-    "oaf", "oda", "oft", "phi", "piu", "qua", "reb", "ret", "roc", "sot",
-    "ted", "tye", "uke", "ulk", "ump", "uns", "upo", "urb", "urd", "ute",
-    "uts", "wot", "wry", "yea", "yin", "zed", "zee", "zig", "zit",
+    "aby", "aci", "acy", "adz", "ahi", "aju", "ake", "alb", "alf", "ani", "arb", "arf", "arn",
+    "att", "auf", "awa", "awl", "awn", "aye", "ays", "baa", "bap", "bys", "cee", "cep", "cis",
+    "coz", "dah", "dak", "dap", "dee", "deg", "dex", "dey", "dif", "dis", "dit", "dob", "dol",
+    "doo", "dop", "dos", "eau", "eke", "eld", "eme", "ems", "ere", "erg", "ern", "err", "ese",
+    "eta", "feg", "feh", "fem", "fet", "feu", "fey", "fez", "fib", "fid", "foh", "fon", "fou",
+    "fro", "fub", "fud", "fug", "gae", "gam", "gat", "ged", "ghi", "gid", "gie", "gip", "gnu",
+    "goa", "gop", "gos", "gox", "hae", "heh", "hep", "hie", "hob", "hoc", "hod", "ich", "ick",
+    "iff", "ism", "jee", "jow", "keg", "kip", "lek", "maw", "nth", "oaf", "oda", "oft", "phi",
+    "piu", "qua", "reb", "ret", "roc", "sot", "ted", "tye", "uke", "ulk", "ump", "uns", "upo",
+    "urb", "urd", "ute", "uts", "wot", "wry", "yea", "yin", "zed", "zee", "zig", "zit",
 ];
 
 fn whitelist_set() -> &'static HashSet<&'static str> {
@@ -1016,8 +1016,11 @@ mod golden_tests {
         assert_eq!(r_end, 128);
         // Major + pure-residual = total (overlap is inside major, not double-counted)
         let pure_residual = r_end - o_end;
-        assert_eq!(m_end - m_start + pure_residual, 128,
-            "partition must cover all dimensions");
+        assert_eq!(
+            m_end - m_start + pure_residual,
+            128,
+            "partition must cover all dimensions"
+        );
     }
 
     #[test]
@@ -1034,8 +1037,11 @@ mod golden_tests {
         // residual starts at GOLDEN_MAJOR - GOLDEN_OVERLAP, ends at MANIFOLD_DIM
         // residual_view starts at GOLDEN_MAJOR - GOLDEN_OVERLAP, goes to end
         let expected = GOLDEN_RESIDUAL + GOLDEN_OVERLAP;
-        assert_eq!(residual.len(), expected,
-            "residual includes overlap, expected {expected}");
+        assert_eq!(
+            residual.len(),
+            expected,
+            "residual includes overlap, expected {expected}"
+        );
     }
 
     #[test]
@@ -1058,11 +1064,15 @@ mod golden_tests {
         // Check that values < 0.1 are zeroed and >= 0.1 survive
         for d in GOLDEN_MAJOR..MANIFOLD_DIM {
             if d == GOLDEN_MAJOR {
-                assert!((coord.0[d] - 0.15).abs() < 1e-10,
-                    "value >= threshold should survive at dim {d}");
+                assert!(
+                    (coord.0[d] - 0.15).abs() < 1e-10,
+                    "value >= threshold should survive at dim {d}"
+                );
             } else {
-                assert_eq!(coord.0[d], 0.0,
-                    "value below threshold should be zeroed at dim {d}");
+                assert_eq!(
+                    coord.0[d], 0.0,
+                    "value below threshold should be zeroed at dim {d}"
+                );
             }
         }
         // Major subspace should be untouched
@@ -1084,16 +1094,27 @@ mod golden_tests {
             let dot: f64 = a.iter().zip(b).map(|(x, y)| x * y).sum();
             let na: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
             let nb: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
-            if na > 1e-15 && nb > 1e-15 { dot / (na * nb) } else { 0.0 }
+            if na > 1e-15 && nb > 1e-15 {
+                dot / (na * nb)
+            } else {
+                0.0
+            }
         }
 
         let cos_mm = cos(w_major.as_slice().unwrap(), b_major.as_slice().unwrap());
-        let cos_rr = cos(w_residual.as_slice().unwrap(), b_residual.as_slice().unwrap());
+        let cos_rr = cos(
+            w_residual.as_slice().unwrap(),
+            b_residual.as_slice().unwrap(),
+        );
 
         // Major and residual subspaces should capture different aspects
         // (cosines should not be nearly identical)
-        assert!((cos_mm - cos_rr).abs() < 2.0,
-            "major/residual cosines may differ; mm={:.4} rr={:.4}", cos_mm, cos_rr);
+        assert!(
+            (cos_mm - cos_rr).abs() < 2.0,
+            "major/residual cosines may differ; mm={:.4} rr={:.4}",
+            cos_mm,
+            cos_rr
+        );
     }
 
     #[test]
@@ -1101,8 +1122,11 @@ mod golden_tests {
         // Verify compile-time constant relationships
         assert!(GOLDEN_MAJOR > GOLDEN_OVERLAP);
         assert!(GOLDEN_RESIDUAL > 0);
-        assert_eq!(GOLDEN_MAJOR + GOLDEN_RESIDUAL, MANIFOLD_DIM,
-            "major + residual = total (overlap is inside major)");
+        assert_eq!(
+            GOLDEN_MAJOR + GOLDEN_RESIDUAL,
+            MANIFOLD_DIM,
+            "major + residual = total (overlap is inside major)"
+        );
         // PHI must be within 1% of the mathematical constant
         let phi_sq = PHI * PHI;
         assert!((phi_sq - PHI - 1.0).abs() < 1e-10, "φ² = φ + 1 must hold");
@@ -1135,9 +1159,12 @@ mod trajectory_tests {
 
         // Trace with invalid tokens that get filtered out.
         let mixed = "a bb worm moves soil"; // 'a' (len1), 'bb' (len2, no whitelist)
-        let mixed_traj = ingest_reasoning_trace(mixed)
-            .expect("remaining tokens should still form a trajectory");
-        assert_eq!(mixed_traj.token_count, 3, "'worm moves soil' = 3 valid tokens");
+        let mixed_traj =
+            ingest_reasoning_trace(mixed).expect("remaining tokens should still form a trajectory");
+        assert_eq!(
+            mixed_traj.token_count, 3,
+            "'worm moves soil' = 3 valid tokens"
+        );
         assert!(mixed_traj.path_length > 0.0);
     }
 

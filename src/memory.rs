@@ -7,13 +7,13 @@
 //! Also manages the persistent trajectory vault (`vault.json`) and offline
 //! Hebbian sleep consolidation for engraving interaction pathways.
 
-use std::path::Path;
-use ndarray::Array1;
-use serde::{Deserialize, Serialize};
-use crate::{CoreError, Result};
 use crate::geometry::token_to_coord;
 use crate::training::WormTrainer;
-use crate::worm_brain::{WormBrain, WORM_NEURON_COUNT};
+use crate::worm_brain::{WORM_NEURON_COUNT, WormBrain};
+use crate::{CoreError, Result};
+use ndarray::Array1;
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 /// A volatile, decaying trace of recent neural firing patterns with a Dirac
 /// operator for chirality-preserving state evolution.
@@ -262,11 +262,13 @@ pub fn consolidate_sleep(brain: &mut WormBrain) -> Result<ConsolidationReport> {
             let coord = token_to_coord(token);
             let (activation, _pre_synaptic) = brain.route_signal(coord.inner())?;
             let input_key = coord.inner().mapv(|v| v as f32);
-            trainer.train_step(brain, &activation, &_pre_synaptic, &input_key).map_err(|e| {
-                CoreError::Numerical(format!(
-                    "sleep consolidation failed at token '{token}': {e}"
-                ))
-            })?;
+            trainer
+                .train_step(brain, &activation, &_pre_synaptic, &input_key)
+                .map_err(|e| {
+                    CoreError::Numerical(format!(
+                        "sleep consolidation failed at token '{token}': {e}"
+                    ))
+                })?;
             total_steps += 1;
         }
     }
@@ -284,8 +286,8 @@ pub fn consolidate_sleep(brain: &mut WormBrain) -> Result<ConsolidationReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array1;
     use crate::worm_brain::WormBrain;
+    use ndarray::Array1;
 
     #[test]
     fn test_echo_inject_apply_decay() {
@@ -294,7 +296,10 @@ mod tests {
         // Initial state is zero — no echo, no Dirac prev → no change.
         let mut proj = Array1::from_elem(WORM_NEURON_COUNT, 1.0);
         buf.apply_and_decay(&mut proj).unwrap();
-        assert!((proj[0] - 1.0).abs() < 1e-12, "zero echo should not change input");
+        assert!(
+            (proj[0] - 1.0).abs() < 1e-12,
+            "zero echo should not change input"
+        );
         assert_eq!(buf.echo_state[0], 0.0);
 
         // Inject an activation.
@@ -305,8 +310,14 @@ mod tests {
         // so final = 1.5 + 0.075 = 1.575.  Echo decays: 0.5 × 0.75 = 0.375.
         let mut proj2 = Array1::from_elem(WORM_NEURON_COUNT, 1.0);
         buf.apply_and_decay(&mut proj2).unwrap();
-        assert!((proj2[0] - 1.575).abs() < 1e-12, "echo + Dirac should produce 1.575");
-        assert!((buf.echo_state[0] - 0.375).abs() < 1e-12, "echo should decay by 0.75");
+        assert!(
+            (proj2[0] - 1.575).abs() < 1e-12,
+            "echo + Dirac should produce 1.575"
+        );
+        assert!(
+            (buf.echo_state[0] - 0.375).abs() < 1e-12,
+            "echo should decay by 0.75"
+        );
 
         // Apply again without injection: echo (0.375) added to 1.0 → 1.375,
         // Dirac γ·∇ = 0.15·(1.375 - 1.575) = −0.03, final = 1.375 − 0.03 = 1.345.
@@ -320,7 +331,12 @@ mod tests {
     fn test_log_trajectory_roundtrip() {
         let temp = std::env::temp_dir().join("utophiecorn_vault_test.json");
         // Override VAULT_PATH by writing/reading directly
-        let steps = vec!["food".to_string(), "energy".to_string(), "move".to_string(), "forward".to_string()];
+        let steps = vec![
+            "food".to_string(),
+            "energy".to_string(),
+            "move".to_string(),
+            "forward".to_string(),
+        ];
 
         // Write via log_trajectory (uses the real VAULT_PATH, so we just test
         // the serialization roundtrip manually to avoid side effects).

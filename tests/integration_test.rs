@@ -5,16 +5,16 @@ use ndarray::Array1;
 
 use utophiecorn_architecture::{
     CoreError,
-    geometry::{self, token_to_coord, MANIFOLD_DIM, ingest_reasoning_trace},
+    geometry::{self, MANIFOLD_DIM, ingest_reasoning_trace, token_to_coord},
     ingest::{self, ingest_jsonl_file},
-    memory::{SynapticEchoBuffer, log_trajectory, consolidate_sleep, VAULT_PATH},
+    memory::{SynapticEchoBuffer, VAULT_PATH, consolidate_sleep, log_trajectory},
     neuro_symbolic::{
-        classify_token, OctetParityBuffer, prune_by_parity, rational_closure, topological_witness,
+        OctetParityBuffer, classify_token, prune_by_parity, rational_closure, topological_witness,
     },
-    storage::{save_brain_state, load_brain_state},
+    storage::{load_brain_state, save_brain_state},
     tda::{PersistenceDiagram, PersistencePair},
     training::WormTrainer,
-    worm_brain::{WormBrain, WORM_NEURON_COUNT},
+    worm_brain::{WORM_NEURON_COUNT, WormBrain},
 };
 
 // ---------------------------------------------------------------------------
@@ -93,7 +93,10 @@ fn test_pipeline_ingest_train_save_load() {
     let before = brain.synapses.clone();
 
     // Re-tokenize the input text and route each token through the brain.
-    for text in ["the worm moves through dark soil seeking food", "quantum entanglement and superposition states"] {
+    for text in [
+        "the worm moves through dark soil seeking food",
+        "quantum entanglement and superposition states",
+    ] {
         for raw in text.split_whitespace() {
             if !geometry::is_valid_token(raw) {
                 continue;
@@ -101,7 +104,9 @@ fn test_pipeline_ingest_train_save_load() {
             let coord = token_to_coord(raw);
             let (activation, pre_synaptic) = brain.route_signal(coord.inner()).unwrap();
             let input_key = coord.inner().mapv(|v| v as f32);
-            trainer.train_step(&mut brain, &activation, &pre_synaptic, &input_key).unwrap();
+            trainer
+                .train_step(&mut brain, &activation, &pre_synaptic, &input_key)
+                .unwrap();
         }
     }
 
@@ -109,14 +114,20 @@ fn test_pipeline_ingest_train_save_load() {
     let before_clone = before.clone();
     let diff = brain.synapses.clone() - before;
     let max_change = diff.iter().copied().fold(0.0_f32, f32::max);
-    assert!(max_change > 0.0, "training should modify at least one synapse");
+    assert!(
+        max_change > 0.0,
+        "training should modify at least one synapse"
+    );
 
     // Verify structural zeros remain zero.
     for i in 0..WORM_NEURON_COUNT {
         for j in 0..WORM_NEURON_COUNT {
             if before_clone[(i, j)] == 0.0 {
-                assert_eq!(brain.synapses[(i, j)], 0.0,
-                    "structural zero ({i},{j}) became non-zero");
+                assert_eq!(
+                    brain.synapses[(i, j)],
+                    0.0,
+                    "structural zero ({i},{j}) became non-zero"
+                );
             }
         }
     }
@@ -156,7 +167,10 @@ fn test_echo_buffer_with_routing() {
     // proj_b should differ from the raw projection (echo was added).
     let echo_diff = proj_b.clone() - &proj_raw;
     let echo_norm = echo_diff.dot(&echo_diff).sqrt();
-    assert!(echo_norm > 0.0, "echo injection should modify the projection");
+    assert!(
+        echo_norm > 0.0,
+        "echo injection should modify the projection"
+    );
 
     // Inject again without routing through brain — just echo state.
     let coord_c = token_to_coord("food");
@@ -166,7 +180,10 @@ fn test_echo_buffer_with_routing() {
     // Apply-and-decay on a fresh vector.
     let mut fresh = Array1::zeros(WORM_NEURON_COUNT);
     echo.apply_and_decay(&mut fresh).unwrap();
-    assert!(fresh.iter().any(|&v| v != 0.0), "echo should bleed into fresh input");
+    assert!(
+        fresh.iter().any(|&v| v != 0.0),
+        "echo should bleed into fresh input"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +203,10 @@ fn test_vault_lifecycle() {
         assert_eq!(report.entries_consolidated, 0);
         assert_eq!(report.total_steps, 0);
         assert!(report.status.is_ok());
-        assert_eq!(brain.synapses, before, "empty vault should not change brain");
+        assert_eq!(
+            brain.synapses, before,
+            "empty vault should not change brain"
+        );
 
         // Phase 2: Log a trajectory entry.
         let steps = vec![
@@ -214,7 +234,11 @@ fn test_vault_lifecycle() {
 
         // Vault should be cleared after consolidation.
         let vault_content = std::fs::read_to_string(Path::new(VAULT_PATH)).unwrap();
-        assert_eq!(vault_content.trim(), "[]", "vault should be empty after sleep");
+        assert_eq!(
+            vault_content.trim(),
+            "[]",
+            "vault should be empty after sleep"
+        );
     });
 }
 
@@ -239,7 +263,10 @@ fn test_trajectory_similarity_pipeline() {
     assert!(sim_ac < 1.0, "dissimilar→{sim_ac} must be < 1");
 
     let sim_ca = traj_c.similarity_to(&traj_a);
-    assert!((sim_ac - sim_ca).abs() < 1e-15, "asymmetry {sim_ac} vs {sim_ca}");
+    assert!(
+        (sim_ac - sim_ca).abs() < 1e-15,
+        "asymmetry {sim_ac} vs {sim_ca}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -260,16 +287,16 @@ fn test_decode_token_from_vocabulary() {
     let coord = token_to_coord("worm");
     let (activation, _) = brain.route_signal(coord.inner()).unwrap();
 
-    let token = geometry::decode_token(
-        &activation,
-        brain.input_projection(),
-        &vocab,
-        &[],
-        0.8,
-        3.0,
+    let token =
+        geometry::decode_token(&activation, brain.input_projection(), &vocab, &[], 0.8, 3.0);
+    assert!(
+        !token.is_empty(),
+        "decode_token should return a non-empty string"
     );
-    assert!(!token.is_empty(), "decode_token should return a non-empty string");
-    assert!(token.len() >= 3, "decoded token '{token}' should have ≥3 chars");
+    assert!(
+        token.len() >= 3,
+        "decoded token '{token}' should have ≥3 chars"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -299,13 +326,22 @@ fn test_echo_dimension_error() {
 fn test_is_valid_token_edge_cases() {
     assert!(geometry::is_valid_token("worm"), "≥3 alphabetic → valid");
     assert!(!geometry::is_valid_token("a"), "1 char → invalid");
-    assert!(!geometry::is_valid_token("ab"), "2 chars, not whitelisted → invalid");
-    assert!(geometry::is_valid_token("in"), "whitelisted short word → valid");
+    assert!(
+        !geometry::is_valid_token("ab"),
+        "2 chars, not whitelisted → invalid"
+    );
+    assert!(
+        geometry::is_valid_token("in"),
+        "whitelisted short word → valid"
+    );
     assert!(geometry::is_valid_token("the"), "3 char word → valid");
     assert!(!geometry::is_valid_token(""), "empty → invalid");
     assert!(!geometry::is_valid_token("123"), "digits → invalid");
     assert!(!geometry::is_valid_token("foo-bar"), "hyphen → invalid");
-    assert!(!geometry::is_valid_token("aby"), "archaic exclusion → invalid");
+    assert!(
+        !geometry::is_valid_token("aby"),
+        "archaic exclusion → invalid"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -317,17 +353,16 @@ fn test_neuro_symbolic_prune_by_parity() {
     let mut buf = OctetParityBuffer::new(8);
     buf.push(classify_token("water")); // noun-only mask = 0b0000_0001
 
-    let tokens = vec![
-        "the".to_string(),
-        "fire".to_string(),
-        "think".to_string(),
-    ];
+    let tokens = vec!["the".to_string(), "fire".to_string(), "think".to_string()];
     let candidates = vec![(0.0, 0usize), (1.0, 1), (2.0, 2)];
 
     let filtered = prune_by_parity(&candidates, &tokens, &buf);
 
     assert!((filtered[0].0 - 0.0).abs() < 1e-6);
-    assert!((filtered[1].0 - 11.0).abs() < 1e-6, "fire should be penalized");
+    assert!(
+        (filtered[1].0 - 11.0).abs() < 1e-6,
+        "fire should be penalized"
+    );
     assert!((filtered[2].0 - 2.0).abs() < 1e-6);
 }
 
@@ -343,18 +378,25 @@ fn test_neuro_symbolic_rational_closure() {
 fn test_neuro_symbolic_topological_witness() {
     let diagram = PersistenceDiagram {
         beta_0_pairs: vec![],
-        beta_1_pairs: vec![
-            PersistencePair { birth: 10, death: 250 },
-        ],
+        beta_1_pairs: vec![PersistencePair {
+            birth: 10,
+            death: 250,
+        }],
         beta_2_pairs: vec![],
         n_points: 20,
     };
 
     let witness = topological_witness(&diagram);
-    assert!(witness > 0.0, "topological witness must be > 0 for persistent cycles");
+    assert!(
+        witness > 0.0,
+        "topological witness must be > 0 for persistent cycles"
+    );
     assert!(witness < 1.0, "single cycle witness should not exceed 1.0");
     // 0.5 * (240/256) + 0.3 * (240/1000) = 0.46875 + 0.072 = 0.54075
-    assert!((witness - 0.54075).abs() < 0.001, "expected ~0.54075, got {witness}");
+    assert!(
+        (witness - 0.54075).abs() < 0.001,
+        "expected ~0.54075, got {witness}"
+    );
 
     let empty = PersistenceDiagram {
         beta_0_pairs: vec![],

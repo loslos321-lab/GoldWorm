@@ -20,10 +20,13 @@
 use ndarray::Array1;
 
 use utophiecorn_architecture::{
-    geometry::{self, load_semantic_embeddings, modified_gram_schmidt, token_to_coord, OrthonormalBasis, VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH},
+    geometry::{
+        self, OrthonormalBasis, VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH, load_semantic_embeddings,
+        modified_gram_schmidt, token_to_coord,
+    },
     tda::compute_betti_numbers,
-    training::{monitor_and_intervene, WormTrainer},
-    worm_brain::{compute_vocab_activations, WormBrain},
+    training::{WormTrainer, monitor_and_intervene},
+    worm_brain::{WormBrain, compute_vocab_activations},
 };
 
 const SENTENCES: &[&str] = &[
@@ -36,10 +39,7 @@ const SENTENCES: &[&str] = &[
 
 /// Provably orthogonal test sentences for Phase 2 controlled experiment.
 /// Generated from orthogonal basis vectors in 128-D space.
-const ORTHOGONAL_SENTENCES: &[&str] = &[
-    "fire burn hot",
-    "quasar nebula cosmic",
-];
+const ORTHOGONAL_SENTENCES: &[&str] = &["fire burn hot", "quasar nebula cosmic"];
 
 const ITERATIONS: usize = 1000;
 const TEMPERATURE: f64 = 0.05;
@@ -164,25 +164,36 @@ fn cluster_score_from_activations(activations: &[ndarray::Array1<f32>]) -> f64 {
         for j in (i + 1)..k {
             let c = cos_mat[i][j];
             avg_cos += c;
-            if c < min_cos { min_cos = c; }
-            if c > max_cos { max_cos = c; }
+            if c < min_cos {
+                min_cos = c;
+            }
+            if c > max_cos {
+                max_cos = c;
+            }
             count += 1;
         }
     }
     if count > 0 {
         avg_cos /= count as f64;
     }
-    let norms: Vec<f64> = activations.iter()
+    let norms: Vec<f64> = activations
+        .iter()
         .map(|a| (a.dot(a) as f64).sqrt())
         .collect();
 
-    eprintln!("  [cluster] cos: avg={avg_cos:.4} min={min_cos:.4} max={max_cos:.4} norms={norms:.3?}");
+    eprintln!(
+        "  [cluster] cos: avg={avg_cos:.4} min={min_cos:.4} max={max_cos:.4} norms={norms:.3?}"
+    );
 
     let eig_vals = jacobi_eigenvalues(&cos_mat, k);
 
     let sum_all: f64 = eig_vals.iter().sum();
     if sum_all > 0.0 {
-        let var: f64 = eig_vals.iter().map(|&v| (v - sum_all / k as f64).powi(2)).sum::<f64>() / k as f64;
+        let var: f64 = eig_vals
+            .iter()
+            .map(|&v| (v - sum_all / k as f64).powi(2))
+            .sum::<f64>()
+            / k as f64;
         let max_var = ((k - 1) as f64).powi(2) / k as f64;
         if max_var > 0.0 {
             (var / max_var).min(1.0)
@@ -197,7 +208,9 @@ fn cluster_score_from_activations(activations: &[ndarray::Array1<f32>]) -> f64 {
 /// Activation Cluster Score (act_cs): fraction of 302 neurons with non-zero activation.
 /// Target: 0.4–0.6 (120–180 of 302). Higher = too many fire (noise), lower = too few (collapse).
 fn activation_cluster_score(activations: &[ndarray::Array1<f32>]) -> f64 {
-    if activations.is_empty() { return 0.0; }
+    if activations.is_empty() {
+        return 0.0;
+    }
     let mut total_nonzero = 0usize;
     for act in activations {
         total_nonzero += act.iter().filter(|&&v| v.abs() > 1e-6).count();
@@ -214,7 +227,9 @@ fn key_cosine_diagnostics(sentences: &[&str]) {
     let mut coords = Vec::with_capacity(k);
     for s in sentences {
         let tokens = tokenize(s);
-        if tokens.is_empty() { continue; }
+        if tokens.is_empty() {
+            continue;
+        }
         coords.push(token_to_coord(&tokens[0]));
     }
     let n = coords.len();
@@ -226,7 +241,11 @@ fn key_cosine_diagnostics(sentences: &[&str]) {
             let dot = coords[i].dot(&coords[j]);
             let ni = coords[i].norm();
             let nj = coords[j].norm();
-            let cos = if ni > 0.0 && nj > 0.0 { dot / (ni * nj) } else { 0.0 };
+            let cos = if ni > 0.0 && nj > 0.0 {
+                dot / (ni * nj)
+            } else {
+                0.0
+            };
             all_cos.push(cos);
             eprintln!("    cos({}, {}) = {:.6}", sentences[i], sentences[j], cos);
         }
@@ -236,8 +255,12 @@ fn key_cosine_diagnostics(sentences: &[&str]) {
         eprintln!("    avg cos = {:.6}", avg);
         if avg > 0.99 {
             eprintln!("    ⚠ CRITICAL: avg cos > 0.99 — 128-D keys are degenerate.");
-            eprintln!("       The pre-synaptic activation cos = key cos (proved: E[(P@k₁)·(P@k₂)] ∝ k₁·k₂)");
-            eprintln!("       Fix: increase embedding dimension or use truly orthogonal key assignment.");
+            eprintln!(
+                "       The pre-synaptic activation cos = key cos (proved: E[(P@k₁)·(P@k₂)] ∝ k₁·k₂)"
+            );
+            eprintln!(
+                "       Fix: increase embedding dimension or use truly orthogonal key assignment."
+            );
         } else if avg > 0.7 {
             eprintln!("    ⚠ WARNING: avg cos > 0.7 — weak separation.");
             eprintln!("       Sparsemax may still collapse. Consider orthogonal key experiment.");
@@ -255,24 +278,36 @@ fn neuron_index_dump(activations: &[ndarray::Array1<f32>], labels: &[&str], top_
     eprintln!("  ── Neuron Index Dump (top-{top_k} per sentence) ──");
     let mut unique_sets: Vec<Vec<usize>> = Vec::new();
     for (i, act) in activations.iter().enumerate() {
-        let pairs: Vec<(usize, f32)> = act.iter().enumerate()
-            .map(|(idx, val)| (idx, *val)).collect();
-        let mut indices: Vec<(usize, f32)> = pairs.into_iter()
-            .filter(|(_, val)| *val > 0.0_f32).collect();
-        indices.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-        let top: Vec<usize> = indices.iter()
-            .take(top_k)
-            .map(|(idx, _)| *idx)
+        let pairs: Vec<(usize, f32)> = act
+            .iter()
+            .enumerate()
+            .map(|(idx, val)| (idx, *val))
             .collect();
+        let mut indices: Vec<(usize, f32)> = pairs
+            .into_iter()
+            .filter(|(_, val)| *val > 0.0_f32)
+            .collect();
+        indices.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+        let top: Vec<usize> = indices.iter().take(top_k).map(|(idx, _)| *idx).collect();
         let label = labels.get(i).unwrap_or(&"???");
-        eprintln!("    {label:>20}: top-{top_k} neurons = [{:?}]",
-            top.iter().map(|i| format!("{:>3}", i)).collect::<Vec<_>>().join(", "));
+        eprintln!(
+            "    {label:>20}: top-{top_k} neurons = [{:?}]",
+            top.iter()
+                .map(|i| format!("{:>3}", i))
+                .collect::<Vec<_>>()
+                .join(", ")
+        );
         unique_sets.push(top);
     }
     // Check if ALL sentences collapse to the same SET of neurons (sorted indices)
     if unique_sets.len() >= 2 {
-        let sorted_sets: Vec<Vec<usize>> = unique_sets.iter()
-            .map(|s| { let mut ss = s.clone(); ss.sort(); ss })
+        let sorted_sets: Vec<Vec<usize>> = unique_sets
+            .iter()
+            .map(|s| {
+                let mut ss = s.clone();
+                ss.sort();
+                ss
+            })
             .collect();
         let all_same_set = sorted_sets[1..].iter().all(|s| *s == sorted_sets[0]);
         // Also check ordering-based difference
@@ -280,9 +315,13 @@ fn neuron_index_dump(activations: &[ndarray::Array1<f32>], labels: &[&str], top_
         if all_same_set {
             eprintln!("    ⚠ COLLAPSE: All sentences activate the SAME {top_k} neuron SET.");
             if !all_same_order {
-                eprintln!("       (minor activation ordering differences, but indices are identical)");
+                eprintln!(
+                    "       (minor activation ordering differences, but indices are identical)"
+                );
             }
-            eprintln!("       This is FALSE cluster_score — the system memorizes, not discriminates.");
+            eprintln!(
+                "       This is FALSE cluster_score — the system memorizes, not discriminates."
+            );
         } else {
             eprintln!("    ✅ Sentences activate DIFFERENT neuron sets — genuine separation.");
         }
@@ -341,13 +380,18 @@ fn run_training_with_params(
                     let lr_eff = trainer.learning_rate * boost * decay_resist;
                     for i in 0..brain.neuron_count {
                         let a_i = prev[i];
-                        if a_i == 0.0 { continue; }
+                        if a_i == 0.0 {
+                            continue;
+                        }
                         for j in 0..brain.neuron_count {
-                            if !trainer.structural_mask[(i, j)] { continue; }
+                            if !trainer.structural_mask[(i, j)] {
+                                continue;
+                            }
                             let cofire = a_i * capped_act[j];
                             if cofire > 1e-6 {
                                 let delta = lr_eff * cofire;
-                                brain.synapses[(i, j)] = (brain.synapses[(i, j)] + delta).min(1.0).max(0.0);
+                                brain.synapses[(i, j)] =
+                                    (brain.synapses[(i, j)] + delta).min(1.0).max(0.0);
                                 forced_count += 1;
                             }
                         }
@@ -363,10 +407,12 @@ fn run_training_with_params(
             let mut sent_acts = Vec::new();
             for sentence in sentences {
                 let tokens = tokenize(sentence);
-                if tokens.is_empty() { continue; }
-                if let Ok((a, _)) = brain.route_signal_capped(
-                    token_to_coord(&tokens[0]).inner(), 150,
-                ) {
+                if tokens.is_empty() {
+                    continue;
+                }
+                if let Ok((a, _)) =
+                    brain.route_signal_capped(token_to_coord(&tokens[0]).inner(), 150)
+                {
                     sent_acts.push(a);
                 }
             }
@@ -385,7 +431,8 @@ fn run_training_with_params(
                 let coord = token_to_coord(&tokens[0]);
                 // Use pre-synaptic (projection) state for cluster score to
                 // isolate projection diversity from synapse-induced collapse.
-                let key_f32: ndarray::Array1<f32> = coord.inner().iter().map(|&v| v as f32).collect();
+                let key_f32: ndarray::Array1<f32> =
+                    coord.inner().iter().map(|&v| v as f32).collect();
                 let pre = brain.input_projection().dot(&key_f32);
                 sent_acts.push(pre);
                 // Post-synaptic (capped) activation for sparsity monitoring
@@ -397,7 +444,10 @@ fn run_training_with_params(
             cluster_history.push((iter, cs));
             let act_cs = activation_cluster_score(&act_acts);
             eprintln!("  iter {iter:>4}: cluster={cs:.4} act_cs={act_cs:.4}");
-            assert!(act_cs < 0.9, "act_cs={act_cs} > 0.9 — too many neurons fire");
+            assert!(
+                act_cs < 0.9,
+                "act_cs={act_cs} > 0.9 — too many neurons fire"
+            );
         }
     }
 
@@ -431,7 +481,10 @@ fn run_training_with_params(
 }
 
 /// Runs the training loop, now delegates to `run_training_with_activations`.
-fn run_training(brain: &mut WormBrain, trainer: &WormTrainer) -> (Vec<(usize, f64)>, Vec<ndarray::Array1<f32>>) {
+fn run_training(
+    brain: &mut WormBrain,
+    trainer: &WormTrainer,
+) -> (Vec<(usize, f64)>, Vec<ndarray::Array1<f32>>) {
     run_training_with_activations(brain, trainer)
 }
 
@@ -439,7 +492,7 @@ fn run_training(brain: &mut WormBrain, trainer: &WormTrainer) -> (Vec<(usize, f6
 fn test_mini_seed_validation() {
     // 1. Brain and trainer with default parameters (lr=0.01, stab=0.99)
     let mut brain = WormBrain::new_baseline();
-    let mut trainer = WormTrainer::new(0.03, 0.99);  // higher lr for capped training
+    let mut trainer = WormTrainer::new(0.03, 0.99); // higher lr for capped training
     trainer.contrastive_lr = 0.05;
     trainer.use_capped_training = true;
     trainer.tda_beta_0_threshold = 50;
@@ -452,7 +505,7 @@ fn test_mini_seed_validation() {
     // 2b. Load semantic embeddings so in-vocabulary tokens get real GloVe-based coordinates
     if std::path::Path::new(VOCAB_EMBEDDINGS_PATH).exists() {
         match load_semantic_embeddings(VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => eprintln!("  [warn] semantic embeddings already loaded: {e}"),
         }
     }
@@ -467,7 +520,9 @@ fn test_mini_seed_validation() {
     let mut init_proj = Vec::new();
     for sentence in SENTENCES {
         let tokens = tokenize(sentence);
-        if tokens.is_empty() { continue; }
+        if tokens.is_empty() {
+            continue;
+        }
         let coord = token_to_coord(&tokens[0]);
         let key_f32: ndarray::Array1<f32> = coord.inner().iter().map(|&v| v as f32).collect();
         let pre = brain.input_projection().dot(&key_f32);
@@ -480,8 +535,10 @@ fn test_mini_seed_validation() {
     // 3. Print header
     println!("\n═══ Mini-Seed Validation ═══");
     println!("Checkpoint: (fresh baseline)");
-    println!("Trainer: lr={}, stab={}, homeostasis={}",
-             trainer.learning_rate, trainer.stabilization_factor, trainer.homeostasis);
+    println!(
+        "Trainer: lr={}, stab={}, homeostasis={}",
+        trainer.learning_rate, trainer.stabilization_factor, trainer.homeostasis
+    );
     println!();
 
     // 4. Train
@@ -515,21 +572,27 @@ fn test_mini_seed_validation() {
     let has_hot = response_a.to_lowercase().contains("hot");
     println!();
     println!("Validation:");
-    println!("  \"fire\"  → \"{response_a}\"  {}",
-             if has_hot { "✅" } else { "❌" });
+    println!(
+        "  \"fire\"  → \"{response_a}\"  {}",
+        if has_hot { "✅" } else { "❌" }
+    );
 
     // 8. Validate: "ice" → "cold"
     let basis_b = build_context_basis("ice");
     let (response_b, _) = brain.generate_response(&vocab, &basis_b, MAX_TOKENS, TEMPERATURE);
     let has_cold = response_b.to_lowercase().contains("cold");
-    println!("  \"ice\"   → \"{response_b}\"  {}",
-             if has_cold { "✅" } else { "❌" });
+    println!(
+        "  \"ice\"   → \"{response_b}\"  {}",
+        if has_cold { "✅" } else { "❌" }
+    );
 
     // 9. Final cluster score from activations
     let final_cs = cluster_score_from_activations(&final_activations);
     println!();
-    println!("Final Cluster-Score: {final_cs:.2} (Ziel: > 0.7) {}",
-             if final_cs > 0.7 { "✅" } else { "❌" });
+    println!(
+        "Final Cluster-Score: {final_cs:.2} (Ziel: > 0.7) {}",
+        if final_cs > 0.7 { "✅" } else { "❌" }
+    );
 
     // 10. Decision logic
     println!();
@@ -562,7 +625,9 @@ fn test_mini_seed_validation() {
 /// Alternative entry point for WTA comparison: pass USE_WTA=true env var.
 #[test]
 fn test_mini_seed_validation_wta() {
-    let use_wta = std::env::var("USE_WTA").map(|v| v == "true").unwrap_or(false);
+    let use_wta = std::env::var("USE_WTA")
+        .map(|v| v == "true")
+        .unwrap_or(false);
     let label = if use_wta { "WTA" } else { "Sparsemax" };
 
     // Trainer with best goldilocks parameters from Phase 1
@@ -578,7 +643,7 @@ fn test_mini_seed_validation_wta() {
         .expect("static_vocabulary.txt should be loadable");
     if std::path::Path::new(VOCAB_EMBEDDINGS_PATH).exists() {
         match load_semantic_embeddings(VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH) {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => eprintln!("  [warn] semantic embeddings already loaded: {e}"),
         }
     }
@@ -587,8 +652,10 @@ fn test_mini_seed_validation_wta() {
 
     println!("\n═══ Mini-Seed Validation ({label}) ═══");
     println!("Checkpoint: (fresh baseline)");
-    println!("Trainer: lr={}, stab={}, homeostasis={}",
-             trainer.learning_rate, trainer.stabilization_factor, trainer.homeostasis);
+    println!(
+        "Trainer: lr={}, stab={}, homeostasis={}",
+        trainer.learning_rate, trainer.stabilization_factor, trainer.homeostasis
+    );
     println!();
 
     let (cluster_history, final_activations) = run_training(&mut brain, &trainer);
@@ -597,7 +664,9 @@ fn test_mini_seed_validation_wta() {
     let mut init_proj = Vec::new();
     for sentence in SENTENCES {
         let tokens = tokenize(sentence);
-        if tokens.is_empty() { continue; }
+        if tokens.is_empty() {
+            continue;
+        }
         let coord = token_to_coord(&tokens[0]);
         let key_f32: ndarray::Array1<f32> = coord.inner().iter().map(|&v| v as f32).collect();
         let pre = brain.input_projection().dot(&key_f32);
@@ -618,19 +687,25 @@ fn test_mini_seed_validation_wta() {
     let has_hot = response_a.to_lowercase().contains("hot");
     println!();
     println!("Validation:");
-    println!("  \"fire\"  → \"{response_a}\"  {}",
-             if has_hot { "✅" } else { "❌" });
+    println!(
+        "  \"fire\"  → \"{response_a}\"  {}",
+        if has_hot { "✅" } else { "❌" }
+    );
 
     let basis_b = build_context_basis("ice");
     let (response_b, _) = brain.generate_response(&vocab, &basis_b, MAX_TOKENS, TEMPERATURE);
     let has_cold = response_b.to_lowercase().contains("cold");
-    println!("  \"ice\"   → \"{response_b}\"  {}",
-             if has_cold { "✅" } else { "❌" });
+    println!(
+        "  \"ice\"   → \"{response_b}\"  {}",
+        if has_cold { "✅" } else { "❌" }
+    );
 
     let final_cs = cluster_score_from_activations(&final_activations);
     println!();
-    println!("Final Cluster-Score: {final_cs:.2} (Ziel: > 0.7) {}",
-             if final_cs > 0.7 { "✅" } else { "❌" });
+    println!(
+        "Final Cluster-Score: {final_cs:.2} (Ziel: > 0.7) {}",
+        if final_cs > 0.7 { "✅" } else { "❌" }
+    );
 
     // Decision
     println!();
@@ -642,7 +717,9 @@ fn test_mini_seed_validation_wta() {
         println!("  \"fire\"  → \"hot\"   ❌  \"ice\"  → \"cold\"   ❌");
         if final_cs < 0.1 && init_cs > 0.5 {
             println!("  → HEBBIAN_COLLAPSE: Projektion anfangs divers, Training zerstört Cluster");
-            println!("  → Nächster Schritt: Training-Dynamik analysieren (lrn_rate, stab, homeostasis)");
+            println!(
+                "  → Nächster Schritt: Training-Dynamik analysieren (lrn_rate, stab, homeostasis)"
+            );
         } else if final_cs < 0.1 {
             println!("  → INPUT_SIGNAL_COLLAPSE: Projektion kollabiert bereits vor Training");
             println!("  → Nächster Schritt: Sanity Check mit linearem Projektor");
@@ -675,9 +752,11 @@ fn measure_convergence_rate(brain: &WormBrain) -> f64 {
         off_diag_vars.push(var);
     }
     let mean_var = off_diag_vars.iter().sum::<f32>() / n as f32;
-    let var_of_vars = off_diag_vars.iter()
+    let var_of_vars = off_diag_vars
+        .iter()
         .map(|&v| (v - mean_var).powi(2))
-        .sum::<f32>() / n as f32;
+        .sum::<f32>()
+        / n as f32;
     (var_of_vars.sqrt() / (mean_var + 1e-10)) as f64
 }
 
@@ -721,18 +800,30 @@ fn test_hebbian_purism_boost1() {
     // Decision: check Jaccard distance between worst-case pair
     let mut min_jaccard = 1.0_f64;
     for a in 0..final_activations.len() {
-        for b in (a+1)..final_activations.len() {
-            let set_a: std::collections::HashSet<usize> = final_activations[a].iter()
-                .enumerate().map(|(i, val)| (i, *val)).filter(|(_, val)| *val > 0.0f32)
-                .map(|(i, _)| i).collect();
-            let set_b: std::collections::HashSet<usize> = final_activations[b].iter()
-                .enumerate().map(|(i, val)| (i, *val)).filter(|(_, val)| *val > 0.0f32)
-                .map(|(i, _)| i).collect();
+        for b in (a + 1)..final_activations.len() {
+            let set_a: std::collections::HashSet<usize> = final_activations[a]
+                .iter()
+                .enumerate()
+                .map(|(i, val)| (i, *val))
+                .filter(|(_, val)| *val > 0.0f32)
+                .map(|(i, _)| i)
+                .collect();
+            let set_b: std::collections::HashSet<usize> = final_activations[b]
+                .iter()
+                .enumerate()
+                .map(|(i, val)| (i, *val))
+                .filter(|(_, val)| *val > 0.0f32)
+                .map(|(i, _)| i)
+                .collect();
             let inter = set_a.intersection(&set_b).count();
             let j = if set_a.len() + set_b.len() > inter {
                 1.0 - (inter as f64 / (set_a.len() + set_b.len() - inter) as f64)
-            } else { 1.0 };
-            if j < min_jaccard { min_jaccard = j; }
+            } else {
+                1.0
+            };
+            if j < min_jaccard {
+                min_jaccard = j;
+            }
         }
     }
     println!("  Min Jaccard distance between any two sentences: {min_jaccard:.4}");
@@ -763,7 +854,9 @@ fn test_orthogonal_key_discrimination() {
     let mut init_proj = Vec::new();
     for s in ORTHOGONAL_SENTENCES {
         let tokens = tokenize(s);
-        if tokens.is_empty() { continue; }
+        if tokens.is_empty() {
+            continue;
+        }
         let coord = token_to_coord(&tokens[0]);
         let key_f32: ndarray::Array1<f32> = coord.inner().iter().map(|&v| v as f32).collect();
         let pre = brain.input_projection().dot(&key_f32);
@@ -780,9 +873,8 @@ fn test_orthogonal_key_discrimination() {
     trainer.tda_beta_1_threshold = 5;
 
     // Train with orthogonal sentences
-    let (cluster_history, final_activations) = run_training_with_params(
-        &mut brain, &trainer, 1.0, ORTHOGONAL_SENTENCES,
-    );
+    let (cluster_history, final_activations) =
+        run_training_with_params(&mut brain, &trainer, 1.0, ORTHOGONAL_SENTENCES);
 
     println!("Cluster History:");
     for (iter, cs) in &cluster_history {
@@ -793,12 +885,20 @@ fn test_orthogonal_key_discrimination() {
     neuron_index_dump(&final_activations, ORTHOGONAL_SENTENCES, 5);
 
     // Decision: check if DIFFERENT neuron sets (not cluster_score, which is flawed)
-            let set1: std::collections::HashSet<usize> = final_activations[0].iter()
-                .enumerate().map(|(i, val)| (i, *val)).filter(|(_, val)| *val > 0.0_f32)
-                .map(|(i, _)| i).collect();
-            let set2: std::collections::HashSet<usize> = final_activations[1].iter()
-                .enumerate().map(|(i, val)| (i, *val)).filter(|(_, val)| *val > 0.0_f32)
-                .map(|(i, _)| i).collect();
+    let set1: std::collections::HashSet<usize> = final_activations[0]
+        .iter()
+        .enumerate()
+        .map(|(i, val)| (i, *val))
+        .filter(|(_, val)| *val > 0.0_f32)
+        .map(|(i, _)| i)
+        .collect();
+    let set2: std::collections::HashSet<usize> = final_activations[1]
+        .iter()
+        .enumerate()
+        .map(|(i, val)| (i, *val))
+        .filter(|(_, val)| *val > 0.0_f32)
+        .map(|(i, _)| i)
+        .collect();
     let intersection: Vec<&usize> = set1.intersection(&set2).collect();
     let jaccard = if set1.len() + set2.len() > 0 {
         1.0 - (intersection.len() as f64 / (set1.len() + set2.len() - intersection.len()) as f64)
@@ -806,7 +906,10 @@ fn test_orthogonal_key_discrimination() {
         0.0
     };
     println!("  Neuron set sizes: {} vs {}", set1.len(), set2.len());
-    println!("  Intersection size: {} (Jaccard distance: {jaccard:.4})", intersection.len());
+    println!(
+        "  Intersection size: {} (Jaccard distance: {jaccard:.4})",
+        intersection.len()
+    );
     println!("  (Jaccard = 1.0 means disjoint sets, 0.0 means identical)");
     if jaccard > 0.5 {
         println!("  ✅ Orthogonal test PASSED: engine CAN discriminate given diverse keys.");
@@ -852,7 +955,8 @@ fn test_tda_threshold_validation() {
     let vocab_list = geometry::load_static_vocabulary("static_vocabulary.txt")
         .expect("static_vocabulary.txt should be loadable");
 
-    let tokens: Vec<&str> = vocab_list.iter()
+    let tokens: Vec<&str> = vocab_list
+        .iter()
         .take(50)
         .map(|(word, _)| word.as_str())
         .collect();
@@ -865,13 +969,23 @@ fn test_tda_threshold_validation() {
     let mut total_interventions = 0usize;
 
     println!("\n═══ Phase 3: TDA Threshold Validation ═══");
-    println!("  Streaming {} tokens through baseline brain...", tokens.len());
-    println!("  Thresholds: β₀ > {}  β₁ > {}", trainer.tda_beta_0_threshold, trainer.tda_beta_1_threshold);
+    println!(
+        "  Streaming {} tokens through baseline brain...",
+        tokens.len()
+    );
+    println!(
+        "  Thresholds: β₀ > {}  β₁ > {}",
+        trainer.tda_beta_0_threshold, trainer.tda_beta_1_threshold
+    );
 
     for (_i, token) in tokens.iter().enumerate() {
-        if !geometry::is_valid_token(token) { continue; }
+        if !geometry::is_valid_token(token) {
+            continue;
+        }
         let coord = token_to_coord(token);
-        let Ok((act, _)) = brain.route_signal_capped(coord.inner(), 150) else { continue; };
+        let Ok((act, _)) = brain.route_signal_capped(coord.inner(), 150) else {
+            continue;
+        };
 
         if let Some(ref prev) = prev_act {
             let rr = gear_resonance_ratio(prev, &act);

@@ -75,9 +75,7 @@ fn test_gate_4a_bifurcation() {
             "Gate 4a FAIL: token '{token}' — dense_active={dense_active} <= sparse_active={sparse_active}. \
              The pre-entmax signal must be denser than the post-entmax action."
         );
-        eprintln!(
-            "  OK [{token}] dense_active={dense_active} sparse_active={sparse_active}"
-        );
+        eprintln!("  OK [{token}] dense_active={dense_active} sparse_active={sparse_active}");
     }
 }
 
@@ -185,7 +183,10 @@ fn test_gate_4d_associative_echo() {
     // Baseline: Jaccard between ice and cold without any echo training
     let (sparse_ice_base, _) = brain.route_with_echo(&ice_coord).unwrap();
     let (sparse_cold_base, _) = brain.route_with_echo(&cold_coord).unwrap();
-    let jac_before = jaccard_top5(sparse_ice_base.as_slice().unwrap(), sparse_cold_base.as_slice().unwrap());
+    let jac_before = jaccard_top5(
+        sparse_ice_base.as_slice().unwrap(),
+        sparse_cold_base.as_slice().unwrap(),
+    );
 
     // Training: present "ice" and "cold" alternately, storing dense signals
     for _step in 0..50 {
@@ -200,11 +201,12 @@ fn test_gate_4d_associative_echo() {
     // with ice (because the echo bias nudges cold toward ice's neurons).
     let (sparse_ice_post, _) = brain.route_with_echo(&ice_coord).unwrap();
     let (sparse_cold_post, _) = brain.route_with_echo(&cold_coord).unwrap();
-    let jac_after = jaccard_top5(sparse_ice_post.as_slice().unwrap(), sparse_cold_post.as_slice().unwrap());
-
-    eprintln!(
-        "  Jaccard(ice, cold) before={jac_before:.4} after={jac_after:.4}"
+    let jac_after = jaccard_top5(
+        sparse_ice_post.as_slice().unwrap(),
+        sparse_cold_post.as_slice().unwrap(),
     );
+
+    eprintln!("  Jaccard(ice, cold) before={jac_before:.4} after={jac_after:.4}");
 
     // The echo must push the Jaccard UP (cold → ice association forms).
     // This is a soft assertion: if the reservoir is working, the Jaccard
@@ -333,6 +335,9 @@ fn test_dual_stream_training_loop() {
         .iter()
         .map(|&v| v.abs())
         .fold(0.0_f32, f32::max);
-    assert!(max_assoc > 0.0, "No associations formed during training loop");
+    assert!(
+        max_assoc > 0.0,
+        "No associations formed during training loop"
+    );
     eprintln!("  Training loop OK: max|W_assoc| = {max_assoc:.6}");
 }

@@ -21,9 +21,9 @@
 //!   from the input coordinate slice.
 //! - `#[inline]` on every hot-path method for zero-cost monomorphization.
 
+use crate::{CoreError, Result, geometry::TokenCoord};
 use ndarray::{Array1, Array2};
 use safetensors::SafeTensors;
-use crate::{CoreError, Result, geometry::TokenCoord};
 
 /// Trait for batch token projection.
 ///
@@ -226,10 +226,7 @@ impl VocabularyProjection {
             return Ok(Array1::zeros(0));
         }
 
-        let max_logit = logits
-            .iter()
-            .cloned()
-            .fold(f64::NEG_INFINITY, f64::max);
+        let max_logit = logits.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
 
         let shifted = logits.map(|x| x - max_logit);
         let exp_shifted = shifted.map(|x| x.exp());
@@ -278,17 +275,14 @@ impl VocabularyProjection {
     ///   not match the inferred `target_dim`.
     #[inline]
     pub fn load_from_safetensors<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
-        let file = std::fs::File::open(&path).map_err(|e| {
-            CoreError::Bridge(format!("failed to open safetensors file: {}", e))
-        })?;
+        let file = std::fs::File::open(&path)
+            .map_err(|e| CoreError::Bridge(format!("failed to open safetensors file: {}", e)))?;
 
-        let mmap = unsafe { memmap2::Mmap::map(&file) }.map_err(|e| {
-            CoreError::Bridge(format!("failed to mmap safetensors file: {}", e))
-        })?;
+        let mmap = unsafe { memmap2::Mmap::map(&file) }
+            .map_err(|e| CoreError::Bridge(format!("failed to mmap safetensors file: {}", e)))?;
 
-        let st = SafeTensors::deserialize(&mmap).map_err(|e| {
-            CoreError::Bridge(format!("failed to deserialize safetensors: {}", e))
-        })?;
+        let st = SafeTensors::deserialize(&mmap)
+            .map_err(|e| CoreError::Bridge(format!("failed to deserialize safetensors: {}", e)))?;
 
         // --- Weight tensor ---
         const WEIGHT_KEYS: &[&str] = &[
@@ -396,26 +390,24 @@ pub fn decode_state_to_token(
 #[inline]
 pub(crate) fn tensor_bytes_to_f64_vec(data: &[u8], dtype: safetensors::Dtype) -> Result<Vec<f64>> {
     match dtype {
-        safetensors::Dtype::F64 => {
-            data.chunks_exact(8)
-                .map(|chunk| {
-                    let bytes: [u8; 8] = chunk.try_into().map_err(|_| {
-                        CoreError::Bridge("misaligned F64 tensor bytes".to_string())
-                    })?;
-                    Ok(f64::from_le_bytes(bytes))
-                })
-                .collect::<Result<Vec<_>>>()
-        }
-        safetensors::Dtype::F32 => {
-            data.chunks_exact(4)
-                .map(|chunk| {
-                    let bytes: [u8; 4] = chunk.try_into().map_err(|_| {
-                        CoreError::Bridge("misaligned F32 tensor bytes".to_string())
-                    })?;
-                    Ok(f32::from_le_bytes(bytes) as f64)
-                })
-                .collect::<Result<Vec<_>>>()
-        }
+        safetensors::Dtype::F64 => data
+            .chunks_exact(8)
+            .map(|chunk| {
+                let bytes: [u8; 8] = chunk
+                    .try_into()
+                    .map_err(|_| CoreError::Bridge("misaligned F64 tensor bytes".to_string()))?;
+                Ok(f64::from_le_bytes(bytes))
+            })
+            .collect::<Result<Vec<_>>>(),
+        safetensors::Dtype::F32 => data
+            .chunks_exact(4)
+            .map(|chunk| {
+                let bytes: [u8; 4] = chunk
+                    .try_into()
+                    .map_err(|_| CoreError::Bridge("misaligned F32 tensor bytes".to_string()))?;
+                Ok(f32::from_le_bytes(bytes) as f64)
+            })
+            .collect::<Result<Vec<_>>>(),
         other => Err(CoreError::Bridge(format!(
             "unsupported safetensors dtype: {:?}; expected F64 or F32",
             other
@@ -430,26 +422,24 @@ pub(crate) fn tensor_bytes_to_f64_vec(data: &[u8], dtype: safetensors::Dtype) ->
 #[inline]
 pub(crate) fn tensor_bytes_to_f32_vec(data: &[u8], dtype: safetensors::Dtype) -> Result<Vec<f32>> {
     match dtype {
-        safetensors::Dtype::F32 => {
-            data.chunks_exact(4)
-                .map(|chunk| {
-                    let bytes: [u8; 4] = chunk.try_into().map_err(|_| {
-                        CoreError::Bridge("misaligned F32 tensor bytes".to_string())
-                    })?;
-                    Ok(f32::from_le_bytes(bytes))
-                })
-                .collect::<Result<Vec<_>>>()
-        }
-        safetensors::Dtype::F64 => {
-            data.chunks_exact(8)
-                .map(|chunk| {
-                    let bytes: [u8; 8] = chunk.try_into().map_err(|_| {
-                        CoreError::Bridge("misaligned F64 tensor bytes".to_string())
-                    })?;
-                    Ok(f64::from_le_bytes(bytes) as f32)
-                })
-                .collect::<Result<Vec<_>>>()
-        }
+        safetensors::Dtype::F32 => data
+            .chunks_exact(4)
+            .map(|chunk| {
+                let bytes: [u8; 4] = chunk
+                    .try_into()
+                    .map_err(|_| CoreError::Bridge("misaligned F32 tensor bytes".to_string()))?;
+                Ok(f32::from_le_bytes(bytes))
+            })
+            .collect::<Result<Vec<_>>>(),
+        safetensors::Dtype::F64 => data
+            .chunks_exact(8)
+            .map(|chunk| {
+                let bytes: [u8; 8] = chunk
+                    .try_into()
+                    .map_err(|_| CoreError::Bridge("misaligned F64 tensor bytes".to_string()))?;
+                Ok(f64::from_le_bytes(bytes) as f32)
+            })
+            .collect::<Result<Vec<_>>>(),
         other => Err(CoreError::Bridge(format!(
             "unsupported safetensors dtype: {:?}; expected F32 or F64",
             other
@@ -565,19 +555,11 @@ mod tests {
         let weight_f32: Vec<f32> = (0..target_dim * coordinate_dim)
             .map(|i| (i as f32) * 0.05)
             .collect();
-        let weight_bytes: Vec<u8> = weight_f32
-            .iter()
-            .flat_map(|&f| f.to_le_bytes())
-            .collect();
+        let weight_bytes: Vec<u8> = weight_f32.iter().flat_map(|&f| f.to_le_bytes()).collect();
 
         // --- Build deterministic F32 bias bytes ---
-        let bias_f32: Vec<f32> = (0..target_dim)
-            .map(|i| (i as f32) * 0.01)
-            .collect();
-        let bias_bytes: Vec<u8> = bias_f32
-            .iter()
-            .flat_map(|&f| f.to_le_bytes())
-            .collect();
+        let bias_f32: Vec<f32> = (0..target_dim).map(|i| (i as f32) * 0.01).collect();
+        let bias_bytes: Vec<u8> = bias_f32.iter().flat_map(|&f| f.to_le_bytes()).collect();
 
         // --- Serialize via safetensors ---
         let mut tensors = std::collections::HashMap::new();
@@ -599,8 +581,7 @@ mod tests {
         let serialized = safetensors::serialize(&tensors, &None).unwrap();
 
         // --- Write temp file ---
-        let temp_path =
-            std::env::temp_dir().join("utophiecorn_mock.safetensors");
+        let temp_path = std::env::temp_dir().join("utophiecorn_mock.safetensors");
         std::fs::write(&temp_path, &serialized).unwrap();
 
         // --- Load via the engine ---
@@ -621,10 +602,15 @@ mod tests {
 
         // For zero input: logit[i] == bias[i] == i * 0.01 (cast F32 → F64).
         // bias[0] = 0 * 0.01 = 0.0
-        assert!(logits[0].abs() < 1e-5, "logits[0] should equal bias[0] = 0.0");
+        assert!(
+            logits[0].abs() < 1e-5,
+            "logits[0] should equal bias[0] = 0.0"
+        );
         // bias[1] = 1 * 0.01 = 0.01 (within F32 round-trip tolerance)
-        assert!((logits[1] - 0.01_f32 as f64).abs() < 1e-5,
-            "logits[1] should equal bias[1] ≈ 0.01");
+        assert!(
+            (logits[1] - 0.01_f32 as f64).abs() < 1e-5,
+            "logits[1] should equal bias[1] ≈ 0.01"
+        );
 
         // --- Cleanup ---
         let _ = std::fs::remove_file(&temp_path);

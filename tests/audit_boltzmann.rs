@@ -1,7 +1,10 @@
-use utophiecorn_architecture::geometry::{load_semantic_embeddings, token_to_coord, load_static_vocabulary, VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH};
-use utophiecorn_architecture::worm_brain::{WormBrain, compute_vocab_activations, VocabFootprints};
 use ndarray::Array1;
 use std::io::Write;
+use utophiecorn_architecture::geometry::{
+    VOCAB_EMBEDDINGS_PATH, VOCABULARY_PATH, load_semantic_embeddings, load_static_vocabulary,
+    token_to_coord,
+};
+use utophiecorn_architecture::worm_brain::{VocabFootprints, WormBrain, compute_vocab_activations};
 
 fn compute_coarse_fingerprint(act: &[f32], norm: f64) -> Vec<f64> {
     (0..30)
@@ -150,13 +153,7 @@ fn run_audit_query(
     // Metrics
     let entropy = -probs
         .iter()
-        .map(|&p| {
-            if p > 1e-15 {
-                p * p.ln()
-            } else {
-                0.0
-            }
-        })
+        .map(|&p| if p > 1e-15 { p * p.ln() } else { 0.0 })
         .sum::<f64>();
     let entropy_max = (k as f64).ln();
     let entropy_ratio = if entropy_max > 0.0 {
@@ -164,10 +161,7 @@ fn run_audit_query(
     } else {
         0.0
     };
-    let p_max = probs
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
+    let p_max = probs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     let p_min = probs.iter().copied().fold(f64::INFINITY, f64::min);
     let p_range = p_max - p_min;
     let energy_span = if k >= 2 {
@@ -236,21 +230,23 @@ fn audit_boltzmann() {
     let pmax_w_pass = if pmax_w < 0.1 { "FAIL" } else { "PASS" };
 
     println!("=== PASS/FAIL ===");
-    println!(
-        "\"quantum\" Entropy Ratio: {} (FAIL if > 0.85)",
-        er_h_pass
-    );
-    println!(
-        "\"neuron\" Entropy Ratio: {} (FAIL if > 0.85)",
-        er_w_pass
-    );
+    println!("\"quantum\" Entropy Ratio: {} (FAIL if > 0.85)", er_h_pass);
+    println!("\"neuron\" Entropy Ratio: {} (FAIL if > 0.85)", er_w_pass);
     println!("\"quantum\" P_max:         {} (FAIL if < 0.1)", pmax_h_pass);
     println!("\"neuron\" P_max:         {} (FAIL if < 0.1)", pmax_w_pass);
     let _ = std::io::stdout().flush();
 
     // Rust assertions
-    assert!(er_h <= 0.90, "\"quantum\" Entropy Ratio FAIL: {} > 0.90", er_h);
-    assert!(er_w <= 0.90, "\"neuron\" Entropy Ratio FAIL: {} > 0.90", er_w);
+    assert!(
+        er_h <= 0.90,
+        "\"quantum\" Entropy Ratio FAIL: {} > 0.90",
+        er_h
+    );
+    assert!(
+        er_w <= 0.90,
+        "\"neuron\" Entropy Ratio FAIL: {} > 0.90",
+        er_w
+    );
     assert!(pmax_h >= 0.1, "\"quantum\" P_max FAIL: {} < 0.1", pmax_h);
     assert!(pmax_w >= 0.1, "\"neuron\" P_max FAIL: {} < 0.1", pmax_w);
 }

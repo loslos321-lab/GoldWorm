@@ -450,7 +450,8 @@ impl WormBrain {
         if point_cloud_key.len() != self.input_dim {
             return Err(CoreError::Geometry(format!(
                 "input dimension mismatch for connectome routing: expected {} (manifold input_dim), got {}",
-                self.input_dim, point_cloud_key.len()
+                self.input_dim,
+                point_cloud_key.len()
             )));
         }
 
@@ -1093,7 +1094,8 @@ impl WormBrain {
         if point_cloud_key.len() != self.input_dim {
             return Err(CoreError::Geometry(format!(
                 "input dimension mismatch for connectome routing: expected {} (manifold input_dim), got {}",
-                self.input_dim, point_cloud_key.len()
+                self.input_dim,
+                point_cloud_key.len()
             )));
         }
 
@@ -1270,9 +1272,7 @@ impl WormBrain {
         let mut traj_activations: Vec<Array1<f32>> = Vec::new();
 
         for _ in 0..max_tokens {
-            let token = decode_token_energy(
-                &activation, self, vocab, &visited, temperature,
-            );
+            let token = decode_token_energy(&activation, self, vocab, &visited, temperature);
 
             if token.is_empty() {
                 break;
@@ -1584,7 +1584,10 @@ mod tests {
         let sum4: f32 = out4.iter().sum();
         assert!((sum1 - 1.0).abs() < 1e-3, "α=1 sum={sum1}");
         assert!((sum2 - 1.0).abs() < 1e-3, "α=2 sum={sum2}");
-        assert!((sum4 - 1.0).abs() < 5e-2, "α=4 sum={sum4} (needs 0.05 tolerance with clipped values)");
+        assert!(
+            (sum4 - 1.0).abs() < 5e-2,
+            "α=4 sum={sum4} (needs 0.05 tolerance with clipped values)"
+        );
     }
 
     #[test]

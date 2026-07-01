@@ -4,7 +4,7 @@ use ndarray::Array1;
 
 use crate::criticality::CriticalityDashboard;
 use crate::hippocampus::EchoReservoir;
-use crate::worm_brain::{WormBrain, WORM_NEURON_COUNT};
+use crate::worm_brain::{WORM_NEURON_COUNT, WormBrain};
 
 /// Configuration for the observation CLI loop.
 #[derive(Clone, Debug)]
@@ -127,7 +127,11 @@ pub fn echo_bias_strength(reservoir: &EchoReservoir, current: &Array1<f32>) -> f
 pub fn top_k_active(state: &[f32], k: usize) -> Vec<(usize, f32)> {
     let mut with_idx: Vec<(usize, f32)> = state.iter().copied().enumerate().collect();
     with_idx.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-    with_idx.into_iter().take(k).filter(|&(_, v)| v > 0.0).collect()
+    with_idx
+        .into_iter()
+        .take(k)
+        .filter(|&(_, v)| v > 0.0)
+        .collect()
 }
 
 /// Parsed observation command.
@@ -232,9 +236,7 @@ pub fn render_dashboard(
     println!("┌─ SYSTEM STATUS ─────────────────────────────────────────────────┐");
     println!(
         "│ Σ(branch): {:<6.4}  │  κ_gate: {:<6.2}  │  t_scale: {:<6.1}  │",
-        sigma,
-        brain.cognition.kappa_gate,
-        brain.cognition.t_scale,
+        sigma, brain.cognition.kappa_gate, brain.cognition.t_scale,
     );
     println!(
         "│ α_echo: {:<6.3}     │  Echo bias: {:<8.5} │  Reservoir: {:>3}/{:>3} {:<10} │",
@@ -248,7 +250,8 @@ pub fn render_dashboard(
         "│ Jaccard drift: {:<6.4} (σ={:<6.4}) │  Entropy: {:<8.3} nats  │  Steps: {:<5}      │",
         jaccard.mean_drift(),
         jaccard.std_drift(),
-        sparse.map(|s| CriticalityDashboard::compute_betti_entropy(s.as_slice().unwrap_or(&[])))
+        sparse
+            .map(|s| CriticalityDashboard::compute_betti_entropy(s.as_slice().unwrap_or(&[])))
             .unwrap_or(0.0),
         step_count,
     );
@@ -261,8 +264,7 @@ pub fn render_dashboard(
             let top = top_k_active(s.as_slice().unwrap(), 5);
             let active_sparse = s.iter().filter(|&&v| v > 0.0).count();
             let active_dense = d.iter().filter(|&&v| v.abs() > 1e-4).count();
-            let dense_rms = (d.mapv(|v| v * v).sum() / WORM_NEURON_COUNT as f32)
-                .sqrt();
+            let dense_rms = (d.mapv(|v| v * v).sum() / WORM_NEURON_COUNT as f32).sqrt();
 
             if !top.is_empty() {
                 let neurons_str: String = top
@@ -270,10 +272,7 @@ pub fn render_dashboard(
                     .map(|&(i, v)| format!("{:>3}:{:.3}", i, v))
                     .collect::<Vec<_>>()
                     .join(", ");
-                println!(
-                    "│ SPARSE (action):  {:53} │",
-                    neurons_str
-                );
+                println!("│ SPARSE (action):  {:53} │", neurons_str);
             } else {
                 println!("│ SPARSE (action):  (uniform / no dominant neuron)          │");
             }
@@ -291,8 +290,7 @@ pub fn render_dashboard(
             if brain.cognition.alpha_echo > 0.0 {
                 if let Some(ref reservoir) = brain.echo_reservoir {
                     let bias = reservoir.query(d);
-                    let bias_rms = (bias.mapv(|v| v * v).sum() / WORM_NEURON_COUNT as f32)
-                        .sqrt();
+                    let bias_rms = (bias.mapv(|v| v * v).sum() / WORM_NEURON_COUNT as f32).sqrt();
                     let bias_top = top_k_active(bias.as_slice().unwrap(), 3);
                     if !bias_top.is_empty() {
                         let bias_str: String = bias_top
@@ -300,10 +298,7 @@ pub fn render_dashboard(
                             .map(|&(i, v)| format!("{:>3}:{:.4}", i, v))
                             .collect::<Vec<_>>()
                             .join(", ");
-                        println!(
-                            "│ ECHO bias:  RMS={:.5}  top: {:42} │",
-                            bias_rms, bias_str
-                        );
+                        println!("│ ECHO bias:  RMS={:.5}  top: {:42} │", bias_rms, bias_str);
                     } else {
                         println!(
                             "│ ECHO bias:  RMS={:.5}  (diffuse)                      │",
@@ -318,7 +313,10 @@ pub fn render_dashboard(
             println!("│ DENSE (learning): —                                                 │");
         }
     }
-    println!("│ Temperature: {:<6.3}                                           │", temperature);
+    println!(
+        "│ Temperature: {:<6.3}                                           │",
+        temperature
+    );
     println!("├────────────────────────────────────────────────────────────────┤");
 
     // --- Panel 3: Associative Resonance ---
@@ -375,7 +373,10 @@ pub fn render_dashboard(
                 .map(|&(i, _)| format!("{:>4}", i))
                 .collect::<Vec<_>>()
                 .join(" ");
-            println!("│ Neurons firing:{}                                   │", neuron_ids);
+            println!(
+                "│ Neurons firing:{}                                   │",
+                neuron_ids
+            );
             // ASCII bar visualization
             let max_v = top_firing.first().map(|&(_, v)| v).unwrap_or(1.0);
             let bars: String = top_firing
@@ -386,7 +387,10 @@ pub fn render_dashboard(
                 })
                 .collect::<Vec<_>>()
                 .join(" ");
-            println!("│                  {}                                   │", bars);
+            println!(
+                "│                  {}                                   │",
+                bars
+            );
         }
     }
 
@@ -402,11 +406,7 @@ fn reservoir_bar(used: usize, cap: usize) -> String {
         return String::new();
     }
     let filled = (used * 10) / cap;
-    format!(
-        "{}{}",
-        "█".repeat(filled),
-        "░".repeat((10 - filled).max(0))
-    )
+    format!("{}{}", "█".repeat(filled), "░".repeat((10 - filled).max(0)))
 }
 
 /// Print the help message.

@@ -14,7 +14,7 @@ use utophiecorn_architecture::{
     criticality::CriticalityDashboard,
     geometry::token_to_coord,
     tda::compute_betti_numbers,
-    worm_brain::{WormBrain, WORM_NEURON_COUNT},
+    worm_brain::{WORM_NEURON_COUNT, WormBrain},
 };
 
 const SENTENCES: &[&str] = &[
@@ -56,12 +56,18 @@ fn pairwise_cosines(arrays: &[Array1<f32>]) -> Vec<f64> {
 
 /// Format a neuron index dump for the top-k active neurons.
 fn neuron_top_k(act: &Array1<f32>, k: usize) -> String {
-    let mut pairs: Vec<(usize, f32)> = act.iter().enumerate()
+    let mut pairs: Vec<(usize, f32)> = act
+        .iter()
+        .enumerate()
         .filter(|&(_, v)| *v > 0.0)
         .map(|(i, &v)| (i, v))
         .collect();
     pairs.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
-    let top: Vec<String> = pairs.iter().take(k).map(|(i, _)| format!("{:>3}", i)).collect();
+    let top: Vec<String> = pairs
+        .iter()
+        .take(k)
+        .map(|(i, _)| format!("{:>3}", i))
+        .collect();
     top.join(", ")
 }
 
@@ -82,13 +88,24 @@ fn test_step1a_ice_ocean_cosine_gate() {
 
     // 1. 128-D key cosine (hash collision check)
     let key_cos: f64 = {
-        let dot: f64 = ice_key.iter().zip(ocean_key.iter()).map(|(&a, &b)| a * b).sum();
+        let dot: f64 = ice_key
+            .iter()
+            .zip(ocean_key.iter())
+            .map(|(&a, &b)| a * b)
+            .sum();
         let ni: f64 = ice_key.iter().map(|&v| v * v).sum::<f64>().sqrt();
         let no: f64 = ocean_key.iter().map(|&v| v * v).sum::<f64>().sqrt();
-        if ni > 1e-15 && no > 1e-15 { (dot / (ni * no)).clamp(-1.0, 1.0) } else { 0.0 }
+        if ni > 1e-15 && no > 1e-15 {
+            (dot / (ni * no)).clamp(-1.0, 1.0)
+        } else {
+            0.0
+        }
     };
     eprintln!("  128-D cos(ice, ocean) = {key_cos:.6}");
-    assert!(key_cos < 0.99, "hash collision: cos(ice, ocean) = {key_cos}");
+    assert!(
+        key_cos < 0.99,
+        "hash collision: cos(ice, ocean) = {key_cos}"
+    );
 
     // 2. Pre-synaptic (input_projection) cosine
     let ice_f32: Array1<f32> = ice_key.iter().map(|&v| v as f32).collect();
@@ -97,11 +114,16 @@ fn test_step1a_ice_ocean_cosine_gate() {
     let pre_ocean = brain.input_projection().dot(&ocean_f32);
     let pre_cos = cosine(&pre_ice, &pre_ocean);
     eprintln!("  pre-synaptic cos(ice, ocean) = {pre_cos:.6}");
-    assert!(pre_cos < 0.99, "projection collapse: pre-synaptic cos = {pre_cos}");
+    assert!(
+        pre_cos < 0.99,
+        "projection collapse: pre-synaptic cos = {pre_cos}"
+    );
 
     // 3. Post-synaptic (linear synapses) cosine — documents the linear collapse
     let (lin_ice, _) = brain.route_signal(&ice_key).expect("linear ice routing");
-    let (lin_ocean, _) = brain.route_signal(&ocean_key).expect("linear ocean routing");
+    let (lin_ocean, _) = brain
+        .route_signal(&ocean_key)
+        .expect("linear ocean routing");
     let lin_cos = cosine(&lin_ice, &lin_ocean);
     eprintln!("  post-synaptic cos(ice, ocean) [linear]  = {lin_cos:.6}");
 
@@ -109,14 +131,19 @@ fn test_step1a_ice_ocean_cosine_gate() {
     let mut quad_brain = WormBrain::new_baseline();
     quad_brain.quad_routing = true;
     let (quad_ice, _) = quad_brain.route_signal(&ice_key).expect("quad ice routing");
-    let (quad_ocean, _) = quad_brain.route_signal(&ocean_key).expect("quad ocean routing");
+    let (quad_ocean, _) = quad_brain
+        .route_signal(&ocean_key)
+        .expect("quad ocean routing");
     let quad_cos = cosine(&quad_ice, &quad_ocean);
     eprintln!("  post-synaptic cos(ice, ocean) [dendritic] = {quad_cos:.6}");
 
     // Note: sparsemax re-normalises to the probability simplex, which can
     // amplify or suppress pairwise cosines depending on the geometry. The
     // critical metric is whether the dendritic path separates them better.
-    eprintln!("  ⚡ pre→post cos shift: {pre_cos:.4} → {lin_cos:.4} (Δ = {:.4})", lin_cos - pre_cos);
+    eprintln!(
+        "  ⚡ pre→post cos shift: {pre_cos:.4} → {lin_cos:.4} (Δ = {:.4})",
+        lin_cos - pre_cos
+    );
     assert!(
         lin_cos < 0.9,
         "❌ SYNAPSES COLLAPSE: post-synaptic cos = {lin_cos:.4} > 0.9"
@@ -130,8 +157,14 @@ fn test_step1a_ice_ocean_cosine_gate() {
     );
 
     // Print neuron index dump to confirm different activations
-    eprintln!("  [dendritic] ice   top-5: [{}]", neuron_top_k(&quad_ice, 5));
-    eprintln!("  [dendritic] ocean top-5: [{}]", neuron_top_k(&quad_ocean, 5));
+    eprintln!(
+        "  [dendritic] ice   top-5: [{}]",
+        neuron_top_k(&quad_ice, 5)
+    );
+    eprintln!(
+        "  [dendritic] ocean top-5: [{}]",
+        neuron_top_k(&quad_ocean, 5)
+    );
 
     eprintln!("  ✅ Step 1a gate passed (symmetry-breaking verified).");
 }
@@ -161,7 +194,8 @@ fn test_step1b_sentence_cluster_comparison() {
     // Linear cluster metric
     let lin_cosines = pairwise_cosines(&lin_activations);
     let lin_mean = lin_cosines.iter().sum::<f64>() / lin_cosines.len() as f64;
-    let lin_zeros: usize = lin_activations.iter()
+    let lin_zeros: usize = lin_activations
+        .iter()
         .map(|a| a.iter().filter(|&&v| v == 0.0).count())
         .sum();
     let lin_avg_zeros = lin_zeros as f64 / lin_activations.len() as f64;
@@ -172,7 +206,8 @@ fn test_step1b_sentence_cluster_comparison() {
     // Dendritic cluster metric (untrained → uniform)
     let quad_cosines = pairwise_cosines(&quad_activations);
     let quad_mean = quad_cosines.iter().sum::<f64>() / quad_cosines.len() as f64;
-    let quad_zeros: usize = quad_activations.iter()
+    let quad_zeros: usize = quad_activations
+        .iter()
         .map(|a| a.iter().filter(|&&v| v == 0.0).count())
         .sum();
     let quad_avg_zeros = quad_zeros as f64 / quad_activations.len() as f64;
@@ -193,7 +228,10 @@ fn test_step1b_sentence_cluster_comparison() {
 
     // Linear should have some diversity (cos < 0.99 for at least some pairs)
     let has_diversity = lin_cosines.iter().any(|&c| c < 0.95);
-    assert!(has_diversity, "linear mode should show some diversity between sentences");
+    assert!(
+        has_diversity,
+        "linear mode should show some diversity between sentences"
+    );
 
     eprintln!("  ✅ Step 1b gate passed.");
 }
@@ -270,7 +308,8 @@ fn test_step2b_hyperbolic_nmda_gating_sparsity() {
         brain.nmda_thresholds = vec![thresh; WORM_NEURON_COUNT];
         let (act, _) = brain.route_signal(&coord).expect("hyperbolic routing");
         let zeros = act.iter().filter(|&&v| v == 0.0).count();
-        let entropy: f64 = act.iter()
+        let entropy: f64 = act
+            .iter()
             .filter(|&&p| p > 1e-15)
             .map(|&p| {
                 let p = p as f64;
@@ -305,45 +344,96 @@ fn test_step3a_creative_k_walk_branching_ratio() {
     brain.creative_k = 0.0;
     let (act_k0, _) = brain.route_signal(&coord).expect("creative routing");
     let z0 = act_k0.iter().filter(|&&v| v == 0.0).count();
-    let e0: f64 = act_k0.iter().filter(|&&p| p > 1e-15).map(|&p| { let p = p as f64; -p * p.ln() }).sum();
+    let e0: f64 = act_k0
+        .iter()
+        .filter(|&&p| p > 1e-15)
+        .map(|&p| {
+            let p = p as f64;
+            -p * p.ln()
+        })
+        .sum();
     let s0 = CriticalityDashboard::compute_branching_ratio(act_k0.as_slice().unwrap());
-    eprintln!("  {:.3} | {:.3} | {s0:>.6}       | {z0:>3}/302   | {e0:>.4}  | k→0 (α=3, sparse)", brain.creative_k, 1.0 + 2.0 * (-0.0_f32).exp());
+    eprintln!(
+        "  {:.3} | {:.3} | {s0:>.6}       | {z0:>3}/302   | {e0:>.4}  | k→0 (α=3, sparse)",
+        brain.creative_k,
+        1.0 + 2.0 * (-0.0_f32).exp()
+    );
 
     // k = ln(2): sparsemax (α = 2)
     brain.creative_k = 0.693_147_2;
     let (act_kln2, _) = brain.route_signal(&coord).expect("creative k=ln2");
     let z_ln2 = act_kln2.iter().filter(|&&v| v == 0.0).count();
-    let e_ln2: f64 = act_kln2.iter().filter(|&&p| p > 1e-15).map(|&p| { let p = p as f64; -p * p.ln() }).sum();
+    let e_ln2: f64 = act_kln2
+        .iter()
+        .filter(|&&p| p > 1e-15)
+        .map(|&p| {
+            let p = p as f64;
+            -p * p.ln()
+        })
+        .sum();
     let s_ln2 = CriticalityDashboard::compute_branching_ratio(act_kln2.as_slice().unwrap());
     let a_ln2 = 1.0 + 2.0 * (-0.693_147_2_f32).exp();
-    eprintln!("  {:.3} | {:.3} | {s_ln2:>.6}       | {z_ln2:>3}/302   | {e_ln2:>.4}  | k=ln2 (α=2, sparsemax)", brain.creative_k, a_ln2);
+    eprintln!(
+        "  {:.3} | {:.3} | {s_ln2:>.6}       | {z_ln2:>3}/302   | {e_ln2:>.4}  | k=ln2 (α=2, sparsemax)",
+        brain.creative_k, a_ln2
+    );
 
     // k = 1.0
     brain.creative_k = 1.0;
     let (act_k1, _) = brain.route_signal(&coord).expect("creative k=1");
     let z1 = act_k1.iter().filter(|&&v| v == 0.0).count();
-    let e1: f64 = act_k1.iter().filter(|&&p| p > 1e-15).map(|&p| { let p = p as f64; -p * p.ln() }).sum();
+    let e1: f64 = act_k1
+        .iter()
+        .filter(|&&p| p > 1e-15)
+        .map(|&p| {
+            let p = p as f64;
+            -p * p.ln()
+        })
+        .sum();
     let s1 = CriticalityDashboard::compute_branching_ratio(act_k1.as_slice().unwrap());
     let a1 = 1.0 + 2.0 * (-1.0_f32).exp();
-    eprintln!("  {:.3} | {:.3} | {s1:>.6}       | {z1:>3}/302   | {e1:>.4}  | k=1", brain.creative_k, a1);
+    eprintln!(
+        "  {:.3} | {:.3} | {s1:>.6}       | {z1:>3}/302   | {e1:>.4}  | k=1",
+        brain.creative_k, a1
+    );
 
     // k = 2.0
     brain.creative_k = 2.0;
     let (act_k2, _) = brain.route_signal(&coord).expect("creative k=2");
     let z2 = act_k2.iter().filter(|&&v| v == 0.0).count();
-    let e2: f64 = act_k2.iter().filter(|&&p| p > 1e-15).map(|&p| { let p = p as f64; -p * p.ln() }).sum();
+    let e2: f64 = act_k2
+        .iter()
+        .filter(|&&p| p > 1e-15)
+        .map(|&p| {
+            let p = p as f64;
+            -p * p.ln()
+        })
+        .sum();
     let s2 = CriticalityDashboard::compute_branching_ratio(act_k2.as_slice().unwrap());
     let a2 = 1.0 + 2.0 * (-2.0_f32).exp();
-    eprintln!("  {:.3} | {:.3} | {s2:>.6}       | {z2:>3}/302   | {e2:>.4}  | k=2", brain.creative_k, a2);
+    eprintln!(
+        "  {:.3} | {:.3} | {s2:>.6}       | {z2:>3}/302   | {e2:>.4}  | k=2",
+        brain.creative_k, a2
+    );
 
     // k → ∞ (using k = 10): creative (α ≈ 1)
     brain.creative_k = 10.0;
     let (act_k10, _) = brain.route_signal(&coord).expect("creative k=10");
     let z10 = act_k10.iter().filter(|&&v| v == 0.0).count();
-    let e10: f64 = act_k10.iter().filter(|&&p| p > 1e-15).map(|&p| { let p = p as f64; -p * p.ln() }).sum();
+    let e10: f64 = act_k10
+        .iter()
+        .filter(|&&p| p > 1e-15)
+        .map(|&p| {
+            let p = p as f64;
+            -p * p.ln()
+        })
+        .sum();
     let s10 = CriticalityDashboard::compute_branching_ratio(act_k10.as_slice().unwrap());
     let a10 = 1.0 + 2.0 * (-10.0_f32).exp();
-    eprintln!("  {:.3} | {:.3} | {s10:>.6}       | {z10:>3}/302   | {e10:>.4}  | k→∞ (α≈1, softmax)", brain.creative_k, a10);
+    eprintln!(
+        "  {:.3} | {:.3} | {s10:>.6}       | {z10:>3}/302   | {e10:>.4}  | k→∞ (α≈1, softmax)",
+        brain.creative_k, a10
+    );
 
     // Zero-trust monotonicity: as k increases, α decreases, so zeros should be
     // non-increasing (more k = less sparse)
@@ -400,8 +490,14 @@ fn test_step3b_dashboard_all_metrics() {
     eprintln!("  ── CriticalityDashboard ──");
     eprintln!("  branching_ratio (σ)  = {:.6}", dashboard.branching_ratio);
     eprintln!("  betti_entropy (H)    = {:.6}", dashboard.betti_entropy);
-    eprintln!("  correlation_length   = {:.6}", dashboard.correlation_length);
-    eprintln!("  avalanche_exponent   = {:.6}", dashboard.avalanche_exponent);
+    eprintln!(
+        "  correlation_length   = {:.6}",
+        dashboard.correlation_length
+    );
+    eprintln!(
+        "  avalanche_exponent   = {:.6}",
+        dashboard.avalanche_exponent
+    );
 
     // The branching ratio σ should be in (0, 10) for sparsemax-like behaviour
     assert!(
@@ -439,9 +535,13 @@ fn test_step3c_creative_mode_combined_full_sequence() {
 
     let zeros = act.iter().filter(|&&v| v == 0.0).count();
     let sum: f32 = act.iter().sum();
-    let entropy: f64 = act.iter()
+    let entropy: f64 = act
+        .iter()
         .filter(|&&p| p > 1e-15)
-        .map(|&p| { let p = p as f64; -p * p.ln() })
+        .map(|&p| {
+            let p = p as f64;
+            -p * p.ln()
+        })
         .sum();
     let branch_ratio = CriticalityDashboard::compute_branching_ratio(act.as_slice().unwrap());
 
@@ -452,9 +552,18 @@ fn test_step3c_creative_mode_combined_full_sequence() {
     eprintln!("    σ (branch)  = {branch_ratio:.6}");
 
     // Must produce a valid probability distribution
-    assert!((sum - 1.0).abs() < 0.01, "combined routing must sum to ≈1, got {sum}");
-    assert!(act.iter().all(|&v| v.is_finite()), "all values must be finite");
-    assert!(act.iter().all(|&v| v >= 0.0), "all values must be non-negative");
+    assert!(
+        (sum - 1.0).abs() < 0.01,
+        "combined routing must sum to ≈1, got {sum}"
+    );
+    assert!(
+        act.iter().all(|&v| v.is_finite()),
+        "all values must be finite"
+    );
+    assert!(
+        act.iter().all(|&v| v >= 0.0),
+        "all values must be non-negative"
+    );
 
     eprintln!("  ✅ Step 3c gate passed (all modes produce valid output).");
 }
